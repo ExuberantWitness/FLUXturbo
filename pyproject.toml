@@ -1,0 +1,17 @@
+[project]
+name = "flux-turbo"
+version = "0.1.0"
+description = "Flux-Insight Claim Chain v2 Blueprint MCP Server"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=1.0.0",
+    "openai>=1.0.0",
+    "httpx>=0.25",
+]
+
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["cc_blueprint*"]

@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "cc-blueprint": {
+      "command": "C:\\Users\\zhang\\.conda\\envs\\FLUX\\python.exe",
+      "args": ["-m", "cc_blueprint"],
+      "cwd": "E:\\DATA\\vscode\\FLUXturbo",
+      "env": {
+        "CC_API_KEY": "sk-f2b050c9539e45bdae40bffdedd1ef2b",
+        "CC_HTTP_PROXY": "http://127.0.0.1:6789",
+        "CC_LLM_MODEL": "deepseek-chat",
+        "CC_LLM_BASE_URL": "https://api.deepseek.com"
+      }
+    }
+  }
+}
