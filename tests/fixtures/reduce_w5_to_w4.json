@@ -1,0 +1,9 @@
+{
+  "reduced_atoms": [
+    {
+      "name": "Entropy-Regularized OT for MARL Credit Assignment",
+      "type": "method",
+      "context": "Optimal transport with entropy regularization applied to multi-agent credit assignment, spanning Sinkhorn-based (lambda=0.1) and Wasserstein-1 variants. Key trade-off: computational efficiency vs transport plan bias."
+    }
+  ]
+}

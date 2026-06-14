@@ -1,0 +1,18 @@
+{
+  "W2_problem_analysis": {
+    "name": "Credit Assignment Noise in CTDE",
+    "context": "Centralized Training with Decentralized Execution (CTDE) suffers from high-variance policy gradients due to noisy credit assignment, where individual agents cannot distinguish their contribution from team reward."
+  },
+  "W3_solution_directions": [
+    {
+      "name": "Optimal Transport Credit Assignment",
+      "context": "Use optimal transport to align agent contributions with reward signals, providing a principled way to distribute credit.",
+      "compares_to": ["Shapley Value Credit Assignment", "Attention-based Credit Assignment"]
+    },
+    {
+      "name": "Shapley Value Credit Assignment",
+      "context": "Use Shapley values from cooperative game theory to quantify each agent's marginal contribution.",
+      "compares_to": ["Optimal Transport Credit Assignment"]
+    }
+  ]
+}

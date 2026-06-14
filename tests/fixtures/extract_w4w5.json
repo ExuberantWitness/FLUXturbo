@@ -1,0 +1,55 @@
+{
+  "W4_concrete_solutions": [
+    {
+      "name": "Sinkhorn-based OT Credit Assignment",
+      "context": "Uses Sinkhorn algorithm with entropy regularization (lambda=0.1) to efficiently compute optimal transport between agent action distributions and reward signals.",
+      "parent_W3_id": "Optimal Transport Credit Assignment",
+      "extends": ["Wasserstein-1 Credit Assignment"],
+      "improves": ["Baseline Difference Credit Assignment"],
+      "extends_rho": {
+        "bottleneck": "computational_cost",
+        "mechanism": "Entropy regularization reduces OT computation from O(n^3) to O(n^2) while maintaining differentiable solution",
+        "tradeoff": "Introduces bias in the transport plan proportional to regularization strength",
+        "confidence": 0.85
+      },
+      "improves_rho": {
+        "bottleneck": "credit_assignment",
+        "mechanism": "OT distance provides geometrically meaningful credit distribution compared to scalar baseline subtraction",
+        "tradeoff": "Requires well-defined cost metric between agents and rewards",
+        "confidence": 0.8
+      },
+      "W5_implementations": [
+        {
+          "name": "sinkhorn_credit_assignment",
+          "context": "Computes Sinkhorn distance between agent Q-values and reward, uses gradient as credit signal.",
+          "code_ref": "sinkhorn_credit"
+        },
+        {
+          "name": "ot_solver_entropy_reg",
+          "context": "Wraps ott-jax Sinkhorn solver with entropy regularization for stable gradient computation.",
+          "code_ref": "OTCreditSolver"
+        }
+      ]
+    },
+    {
+      "name": "Monte Carlo Shapley Credit",
+      "context": "Approximates Shapley values via Monte Carlo sampling over agent coalitions, using per-agent value function evaluation.",
+      "parent_W3_id": "Shapley Value Credit Assignment",
+      "extends": [],
+      "improves": ["Exact Shapley Credit Assignment"],
+      "improves_rho": {
+        "bottleneck": "scalability",
+        "mechanism": "Monte Carlo sampling reduces coalition enumeration from O(2^n) to O(m * n) where m is sample count",
+        "tradeoff": "Introduces estimation variance proportional to 1/sqrt(m)",
+        "confidence": 0.9
+      },
+      "W5_implementations": [
+        {
+          "name": "mc_shapley_credit",
+          "context": "Samples random agent permutations to estimate Shapley values, computes marginal contribution for each.",
+          "code_ref": "MCShapleyCredit"
+        }
+      ]
+    }
+  ]
+}

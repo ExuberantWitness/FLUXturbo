@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 blueprint_output/
 .env
+cc_blueprint/
+ccchain.egg-info/
+*.egg-info/
+.pytest_cache/
+
