@@ -12,8 +12,17 @@ import uuid
 import igraph as ig
 
 from ccchain.core.graph import connected_components_by_level
-from ccchain.core.ontology import LEVEL_ORDER, Atom, Edge
+from ccchain.core.ontology import LEVEL_ORDER, TYPE_TO_LEVEL, Atom, Edge
 from ccchain.plugins.base import Reducer
+
+
+# Default type per level when LLM doesn't specify or specifies invalid type.
+LEVEL_DEFAULT_TYPE: dict[str, str] = {
+    "W2_problem_analysis": "problem",
+    "W3_solution_direction": "method",
+    "W4_concrete_solution": "solution",
+    "W5_code_implementation": "component",
+}
 
 
 class HierarchicalReducer(Reducer):
@@ -88,16 +97,39 @@ class HierarchicalReducer(Reducer):
         now = time.strftime("%Y-%m-%dT%H:%M:%S")
         result: list[Atom] = []
 
+        # Pick dominant source atom (most references / first one) for provenance carryover.
+        dominant = source_atoms[0] if source_atoms else None
+
         for item in response.get("reduced_atoms", []):
             atom_id = f"REDUCED_{to_level}_{uuid.uuid4().hex[:8]}"
+
+            # Validate LLM-chosen type against TYPE_TO_LEVEL; fall back to level default.
+            raw_type = item.get("type") or LEVEL_DEFAULT_TYPE.get(to_level, "method")
+            if TYPE_TO_LEVEL.get(raw_type) != to_level:
+                raw_type = LEVEL_DEFAULT_TYPE.get(to_level, raw_type)
+
+            # Carry over source_refs and code_body from dominant source atom; stamp reduced_from.
+            source_refs = dominant.source_refs if dominant else None
+            code_body = dominant.code_body if dominant else None
+            provenance = None
+            if dominant and dominant.provenance:
+                provenance = dict(dominant.provenance)
+            else:
+                provenance = {}
+            provenance["reduced_from"] = [a.node_id for a in source_atoms]
+            provenance["phase"] = "reduce"
+
             result.append(Atom(
                 node_id=atom_id,
                 name=item.get("name", f"Reduced {to_level}"),
-                type=item.get("type", "method"),
+                type=raw_type,
                 level=to_level,
                 context=item.get("context", ""),
                 created_at=now,
                 updated_at=now,
+                source_refs=source_refs,
+                code_body=code_body,
+                provenance=provenance,
             ))
 
         return result
@@ -113,10 +145,16 @@ Source atoms:
 Synthesize these into higher-level {to_level} abstractions. Each reduced atom should
 capture the shared essence while noting variations.
 
+Choose the type from the {to_level} layer's allowed types only:
+- W2_problem_analysis: ["problem", "bottleneck", "hypothesis"]
+- W3_solution_direction: ["method", "citation", "concept"]
+- W4_concrete_solution: ["solution", "numerical", "conclusion"]
+- W5_code_implementation: ["component", "experiment", "verification"]
+
 Return JSON:
 {{
   "reduced_atoms": [
-    {{"name": "...", "type": "method", "context": "synthesized description..."}}
+    {{"name": "...", "type": "...", "context": "synthesized description..."}}
   ]
 }}
 """

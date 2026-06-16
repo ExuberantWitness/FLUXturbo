@@ -15,6 +15,9 @@ from ccchain.core.ontology import (
     LEVEL_ALIAS,
     STRONG_CAUSAL_EDGES,
     TYPE_COMPATIBILITY,
+    TYPE_TO_COE_CHECKS,
+    TYPE_TO_LEVEL,
+    TaskSpec,
 )
 
 server = Server("ccchain")
@@ -23,15 +26,19 @@ server = Server("ccchain")
 @server.call_tool()
 async def handle_call_tool(name: str, arguments: dict):
     if name == "build_cc_index":
+        task_spec_raw = arguments.get("task_spec")
+        task_spec = TaskSpec.from_dict(task_spec_raw) if task_spec_raw else None
         result, err = ingest(
             segments=arguments["segments"],
             source_pdf=arguments["source_pdf"],
+            task_spec=task_spec,
         )
     elif name == "search_cc":
         result, err = search(
             query=arguments["query"],
             top_k=arguments.get("top_k", 10),
             level=arguments.get("level", "W4"),
+            status=arguments.get("status"),
         )
     elif name == "evaluate_novelty":
         result, err = evaluate(
@@ -46,6 +53,8 @@ async def handle_call_tool(name: str, arguments: dict):
             "strong_causal_edges": list(STRONG_CAUSAL_EDGES),
             "levels": LEVELS,
             "level_aliases": LEVEL_ALIAS,
+            "type_to_level": TYPE_TO_LEVEL,
+            "type_to_coe_checks": {k: sorted(v) for k, v in TYPE_TO_COE_CHECKS.items()},
             "type_compatibility": {
                 k: list(v) for k, v in TYPE_COMPATIBILITY.items()
             },

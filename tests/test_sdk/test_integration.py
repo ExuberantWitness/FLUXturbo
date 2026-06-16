@@ -243,7 +243,7 @@ class TestFullPipeline:
 
             assert len(w4_atoms) >= 1, f"No W4 for {paper['filename']}"
             assert len(w5_atoms) >= 1, f"No W5 for {paper['filename']}"
-            assert all(a.type == "method" for a in w4_atoms)
+            assert all(a.type == "solution" for a in w4_atoms)
             assert all(a.type == "component" for a in w5_atoms)
 
             # W5 should have code_ref
@@ -609,7 +609,7 @@ class TestFullPipeline:
             Atom(
                 node_id=f"prop_w4_{uuid.uuid4().hex[:8]}",
                 name="Partial OT Safety Filter",
-                type="method",
+                type="solution",
                 level="W4_concrete_solution",
                 context="Partial OT with entropic regularization and mass relaxation parameter for safety-constrained RL.",
                 embedding=np.random.randn(1024).astype(np.float32),
@@ -646,7 +646,7 @@ class TestFullPipeline:
                  level="W2_problem_analysis", context="A test problem."),
             Atom(node_id="w3_1", name="Test Solution", type="method",
                  level="W3_solution_direction", context="A test solution."),
-            Atom(node_id="w4_1", name="Test Implementation", type="method",
+            Atom(node_id="w4_1", name="Test Implementation", type="solution",
                  level="W4_concrete_solution", context="A test implementation."),
         ]
         for a in atoms:
@@ -746,6 +746,7 @@ class TestFullPipeline:
                         level="W3_solution_direction",
                         context="External method referenced for comparison.",
                         source_pdf=paper["filename"],
+                        provenance={"via": "external_compare_target"},
                     ))
                     existing_ids.add(e.tgt)
 

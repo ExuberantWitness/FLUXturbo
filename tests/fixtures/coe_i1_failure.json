@@ -1,0 +1,13 @@
+{
+  "_comment": "CoE I1 (Score Verification) failure scenario. numerical atom whose provenance.score disagrees with the LLM re-extraction beyond adaptive tolerance max(1%|s|, 3σ/|s|). Expected verdict: status='low_confidence' (soft fail).",
+  "atom": {
+    "node_id": "numerical_winrate",
+    "name": "Reported Win Rate",
+    "type": "numerical",
+    "level": "W4_concrete_solution",
+    "context": "Our method achieves a win rate of 0.95 on the SMAC benchmark.",
+    "provenance": {"score": 0.95, "score_std": 0.0}
+  },
+  "llm_reextract": {"score": 0.55, "reasoning": "Text reports 0.55 win rate"},
+  "expected_status": "low_confidence"
+}

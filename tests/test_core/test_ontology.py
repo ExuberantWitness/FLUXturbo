@@ -1,4 +1,4 @@
-"""Test ontology constants and dataclasses."""
+"""Test ontology constants and dataclasses (v0.3 12-type system)."""
 
 import pytest
 from ccchain.core.ontology import (
@@ -11,15 +11,18 @@ from ccchain.core.ontology import (
     LEVEL_ALIAS,
     STRONG_CAUSAL_EDGES,
     TYPE_COMPATIBILITY,
+    TYPE_TO_COE_CHECKS,
+    TYPE_TO_LEVEL,
     Atom,
     Edge,
     Rho,
+    TaskSpec,
     Trajectory,
 )
 
 
 def test_atom_types_count():
-    assert len(ATOM_TYPES) == 8
+    assert len(ATOM_TYPES) == 12
 
 
 def test_levels_order():
@@ -44,21 +47,58 @@ def test_hierarchy_edges():
     assert "decomposes_into" in HIERARCHY_EDGES
 
 
+def test_type_to_level_mapping():
+    """12 types map 1:1 to 4 levels, 3 types per level."""
+    assert TYPE_TO_LEVEL["problem"] == "W2_problem_analysis"
+    assert TYPE_TO_LEVEL["bottleneck"] == "W2_problem_analysis"
+    assert TYPE_TO_LEVEL["hypothesis"] == "W2_problem_analysis"
+    assert TYPE_TO_LEVEL["method"] == "W3_solution_direction"
+    assert TYPE_TO_LEVEL["citation"] == "W3_solution_direction"
+    assert TYPE_TO_LEVEL["concept"] == "W3_solution_direction"
+    assert TYPE_TO_LEVEL["solution"] == "W4_concrete_solution"
+    assert TYPE_TO_LEVEL["numerical"] == "W4_concrete_solution"
+    assert TYPE_TO_LEVEL["conclusion"] == "W4_concrete_solution"
+    assert TYPE_TO_LEVEL["component"] == "W5_code_implementation"
+    assert TYPE_TO_LEVEL["experiment"] == "W5_code_implementation"
+    assert TYPE_TO_LEVEL["verification"] == "W5_code_implementation"
+    # bijection
+    assert len(TYPE_TO_LEVEL) == 12
+
+
+def test_type_to_coe_checks_mapping():
+    """CoE check mapping per type."""
+    assert TYPE_TO_COE_CHECKS["numerical"] == {"I1"}
+    assert TYPE_TO_COE_CHECKS["citation"] == {"I3"}
+    assert TYPE_TO_COE_CHECKS["method"] == {"I4"}
+    assert TYPE_TO_COE_CHECKS["solution"] == {"I4"}
+    assert TYPE_TO_COE_CHECKS["experiment"] == {"I2"}
+    # types without CoE checks are absent or empty
+    assert TYPE_TO_COE_CHECKS.get("problem", set()) == set()
+    assert TYPE_TO_COE_CHECKS.get("concept", set()) == set()
+    assert TYPE_TO_COE_CHECKS.get("conclusion", set()) == set()
+    assert TYPE_TO_COE_CHECKS.get("component", set()) == set()
+    assert TYPE_TO_COE_CHECKS.get("verification", set()) == set()
+
+
 def test_type_compatibility():
+    """12-type edge compatibility."""
     assert ("method", "method") in TYPE_COMPATIBILITY["extends"]
+    assert ("solution", "solution") in TYPE_COMPATIBILITY["extends"]
+    assert ("component", "component") in TYPE_COMPATIBILITY["extends"]
     assert ("method", "component") in TYPE_COMPATIBILITY["uses_component"]
+    assert ("citation", "method") in TYPE_COMPATIBILITY["background"]
 
 
 def test_atom_creation():
     a = Atom(
         node_id="W4_test_1",
-        name="Test Atom",
-        type="method",
+        name="Test Solution",
+        type="solution",
         level="W4_concrete_solution",
         context="Test context",
     )
     assert a.node_id == "W4_test_1"
-    assert a.type == "method"
+    assert a.type == "solution"
     assert a.status == "active"
 
 
@@ -69,7 +109,16 @@ def test_atom_invalid_type():
 
 def test_atom_invalid_level():
     with pytest.raises(ValueError):
-        Atom(node_id="X", name="Bad", type="method", level="W99")
+        Atom(node_id="X", name="Bad", type="solution", level="W99")
+
+
+def test_atom_type_level_mismatch():
+    """R7 enforced at construction: numerical must be at W4, not W5."""
+    with pytest.raises(ValueError, match="Type-level mismatch"):
+        Atom(
+            node_id="X", name="Bad", type="numerical",
+            level="W5_code_implementation",
+        )
 
 
 def test_atom_to_from_dict():
@@ -77,7 +126,7 @@ def test_atom_to_from_dict():
         node_id="W4_test",
         name="Test",
         type="method",
-        level="W4_concrete_solution",
+        level="W3_solution_direction",
         context="Ctx",
         tags=["domain:MARL"],
     )
@@ -116,11 +165,11 @@ def test_trajectory_empty():
 
 
 def test_atom_v02_fields_default_none():
-    """New v0.2 fields default to None when not provided."""
+    """v0.2 fields default to None when not provided."""
     a = Atom(
         node_id="W5_test",
         name="Sinkhorn",
-        type="method",
+        type="component",
         level="W5_code_implementation",
     )
     assert a.code_body is None
@@ -135,7 +184,7 @@ def test_atom_v02_fields_roundtrip():
     a = Atom(
         node_id="W5_test",
         name="Sinkhorn",
-        type="method",
+        type="component",
         level="W5_code_implementation",
         code_body="def sinkhorn2(cost, reg=0.1): ...",
         source_refs=["arxiv:2203.12345", "paper:OT-CTDE-2024"],
@@ -171,3 +220,36 @@ def test_edge_v02_provenance_roundtrip():
     e2 = Edge.from_dict(d)
     assert e2.provenance == e.provenance
     assert e2.rowid is None
+
+
+def test_taskspec_creation():
+    """TaskSpec dataclass works for I2 input."""
+    ts = TaskSpec(
+        task_name="smac-1v1",
+        eval_harness="smac-v1",
+        success_criteria="win_rate > 0.9 against built-in AI",
+        constraints=["CTDE", "no centralised critic"],
+    )
+    assert ts.task_name == "smac-1v1"
+    assert len(ts.constraints) == 2
+
+
+def test_taskspec_roundtrip():
+    ts = TaskSpec(
+        task_name="montezuma",
+        eval_harness="ale",
+        success_criteria="score > 6000",
+    )
+    d = ts.to_dict()
+    assert d["task_name"] == "montezuma"
+    ts2 = TaskSpec.from_dict(d)
+    assert ts2.eval_harness == "ale"
+    assert ts2.constraints == []
+
+
+def test_all_12_types_constructible():
+    """Each of 12 types can construct an atom with its canonical level."""
+    for t, lvl in TYPE_TO_LEVEL.items():
+        a = Atom(node_id=f"test_{t}", name=f"Test {t}", type=t, level=lvl)
+        assert a.type == t
+        assert a.level == lvl

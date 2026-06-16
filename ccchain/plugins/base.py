@@ -1,4 +1,7 @@
-"""Plugin abstract base classes — 5 single-method ABCs."""
+"""Plugin abstract base classes — 6 single-method ABCs.
+
+v0.3 adds Verifier (CoE Integrity Audit: I1/I2/I3/I4).
+"""
 
 from __future__ import annotations
 
@@ -7,7 +10,7 @@ from abc import ABC, abstractmethod
 import igraph as ig
 import numpy as np
 
-from ccchain.core.ontology import Atom, Edge, Trajectory
+from ccchain.core.ontology import Atom, Edge, TaskSpec, Trajectory
 
 
 class Extractor(ABC):
@@ -91,4 +94,31 @@ class Evaluator(ABC):
         existing_trajectories: list[Trajectory],
     ) -> dict:
         """Hausdorff distance + LLM rubric → structured novelty report."""
+        ...
+
+
+class Verifier(ABC):
+    """Run Chain-of-Evidence (CoE) integrity audit on atoms.
+
+    Each atom type triggers specific CoE checks via TYPE_TO_COE_CHECKS:
+      I1 — Score Verification (numerical)
+      I2 — Specification Violation (experiment, requires task_spec)
+      I3 — Reference Verification (citation)
+      I4 — Method-Code Alignment (method, solution)
+    """
+
+    @abstractmethod
+    def verify(
+        self,
+        atoms: list[Atom],
+        edges: list[Edge],
+        *,
+        task_spec: TaskSpec | None = None,
+    ) -> dict:
+        """Run applicable CoE checks. Returns {cpr, atoms_audited, atoms_passed,
+        atoms_failed, failures_by_check, per_atom}.
+
+        CPR (Claim Provenance Rate) = numerical atoms with status 'verified' /
+        (verified + low_reliability + low_confidence) numerical atoms.
+        """
         ...

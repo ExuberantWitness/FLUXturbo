@@ -9,6 +9,7 @@ Three public methods:
 from __future__ import annotations
 
 from ccchain.config import Config
+from ccchain.core.ontology import TaskSpec
 from ccchain.core.store import CCStore
 from ccchain.plugins.base import (
     Evaluator,
@@ -16,12 +17,14 @@ from ccchain.plugins.base import (
     Reducer,
     Refiner,
     Retriever,
+    Verifier,
 )
 from ccchain.plugins.extraction import TwoPhaseExtractor
 from ccchain.plugins.refinement import LeapRefiner
 from ccchain.plugins.reduction import HierarchicalReducer
 from ccchain.plugins.retrieval import GraphRetriever
 from ccchain.plugins.evaluation import NoveltyEvaluator
+from ccchain.plugins.verification import CoEClaimVerifier
 
 # Lazy singletons
 _store: CCStore | None = None
@@ -30,10 +33,11 @@ _refiner: Refiner | None = None
 _reducer: Reducer | None = None
 _retriever: Retriever | None = None
 _evaluator: Evaluator | None = None
+_verifier: Verifier | None = None
 
 
 def _init(config: Config | None = None):
-    global _store, _extractor, _refiner, _reducer, _retriever, _evaluator
+    global _store, _extractor, _refiner, _reducer, _retriever, _evaluator, _verifier
 
     if config is None:
         config = Config()
@@ -80,10 +84,23 @@ def _init(config: Config | None = None):
             hausdorff_weights=config.hausdorff_weights,
         )
 
+    if _verifier is None:
+        _verifier = CoEClaimVerifier(
+            base_url=config.llm_base_url,
+            api_key=config.llm_api_key,
+            model=config.llm_model,
+            reference_api_keys=config.reference_api_keys,
+            reference_api_timeout=config.reference_api_timeout,
+            reference_api_max_retries=config.reference_api_max_retries,
+            majority_k=config.audit_majority_k,
+            i1_k=config.audit_i1_k,
+        )
+
 
 def ingest(
     segments: list[str],
     source_pdf: str,
+    task_spec: TaskSpec | None = None,
     version: int = 1,
     on_progress: "callable | None" = None,
 ) -> tuple[dict | None, str | None]:
@@ -91,16 +108,20 @@ def ingest(
 
     Pipeline: extract (two-phase) → refine (iterative) → store (dual-write)
               → reduce (incremental per connected component)
+              → audit (CoE integrity: I1/I2/I3/I4)
 
     Args:
         segments: List of text segments from the paper.
         source_pdf: Source PDF filename for provenance.
+        task_spec: Optional TaskSpec for I2 (Specification Violation) check.
+            When None, I2 is automatically skipped. Mirrors ScientistOne's
+            external ADRS benchmark role — caller provides evaluation criteria.
         version: Blueprint version number.
         on_progress: Optional callback(stage: str, pct: float) for progress.
 
     Returns:
         (result, error) tuple. On success, error=None and result contains
-        {node_count_by_level, edge_count, trajectory_count}.
+        {node_count_by_level, edge_count, trajectory_count, audit_report}.
     """
     try:
         _init()
@@ -184,12 +205,21 @@ def ingest(
 
         _progress("reducing", 1.0)
 
+        # 5. Audit (CoE Integrity: I1/I2/I3/I4) — mutates atom.status
+        _progress("auditing", 0.0)
+        all_atoms = _collect_active_atoms()
+        audit_report = _verifier.verify(all_atoms, edges, task_spec=task_spec)
+        _store.upsert_atoms(all_atoms)
+        _progress("auditing", 1.0)
+
         # Build result summary
         trajectories = _store.get_all_trajectories()
         level_counts: dict[str, int] = {}
         for lvl in ["W2_problem_analysis", "W3_solution_direction",
                      "W4_concrete_solution", "W5_code_implementation"]:
-            level_counts[lvl] = len(_store.query_by_level(lvl))
+            # status=None: count atoms regardless of audit outcome (the audit
+            # just ran and flipped most atoms off 'active').
+            level_counts[lvl] = len(_store.query_by_level(lvl, status=None))
 
         _progress("done", 1.0)
 
@@ -197,16 +227,33 @@ def ingest(
             "node_count_by_level": level_counts,
             "edge_count": result["inserted_edges"],
             "trajectory_count": len(trajectories),
+            "audit_report": audit_report,
         }, None
 
     except Exception as exc:
         return None, str(exc)
 
 
+def _collect_active_atoms() -> list:
+    """Pull all un-audited (status='active') atoms for CoE verification.
+
+    Covers freshly extracted atoms (source_pdf set) AND freshly reduced atoms
+    (source_pdf=None). Previously-audited atoms carry verified/skipped/low_*
+    status and are excluded by query_by_level's default status='active' filter,
+    so re-ingesting a new paper never re-runs checks on prior atoms.
+    """
+    atoms: list = []
+    for lvl in ["W2_problem_analysis", "W3_solution_direction",
+                "W4_concrete_solution", "W5_code_implementation"]:
+        atoms.extend(_store.query_by_level(lvl))
+    return atoms
+
+
 def search(
     query: str,
     top_k: int = 10,
     level: str = "W4",
+    status: str | None = None,
 ) -> tuple[list[dict] | None, str | None]:
     """Search the CC knowledge base.
 
@@ -216,6 +263,12 @@ def search(
         query: Natural language search query.
         top_k: Number of results to return.
         level: Level filter (W2/W3/W4/W5 or full level name).
+        status: Status filter for CoE audit outcomes.
+            - None (default): return trusted atoms only (verified/skipped/active/
+              needs_review). Excludes low_reliability/low_confidence/demoted
+              audit failures and transient/merged/stuck lifecycle states.
+            - "all": return all atoms (admin/debug use).
+            - Specific status (e.g. "low_reliability"): return only that subset.
 
     Returns:
         (result, error) tuple.
@@ -236,17 +289,38 @@ def search(
             node_index=_store._node_index,
         )
 
-        # Enrich results with context
+        # Enrich results with context + status, then apply status filter
+        enriched: list[dict] = []
         for r in results:
             atom = _store.query_by_id(r["node_id"])
             if atom:
                 r["context"] = atom.context
                 r["source_pdf"] = atom.source_pdf
+                r["status"] = atom.status
+            if _status_included(atom.status if atom else "active", status):
+                enriched.append(r)
 
-        return results, None
+        return enriched, None
 
     except Exception as exc:
         return None, str(exc)
+
+
+_DEFAULT_INCLUDE_STATUSES = frozenset({
+    "active",         # pre-audit lifecycle (legacy data)
+    "verified",       # CoE audit passed
+    "skipped",        # no CoE check applicable (subjective atoms)
+    "needs_review",   # flagged for review but still searchable
+})
+
+
+def _status_included(atom_status: str, filter_param: str | None) -> bool:
+    """Decide whether to include an atom based on its status and the filter param."""
+    if filter_param is None:
+        return atom_status in _DEFAULT_INCLUDE_STATUSES
+    if filter_param == "all":
+        return True
+    return atom_status == filter_param
 
 
 def evaluate(

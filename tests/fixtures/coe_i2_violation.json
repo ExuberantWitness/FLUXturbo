@@ -1,0 +1,20 @@
+{
+  "_comment": "CoE I2 (Specification Violation) scenario. experiment atom whose code_body uses a centralised critic, violating the task_spec constraint 'no centralised critic at execution time'. Expected K=5 majority verdict: 'violates_spec' → status='low_reliability' (hard fail).",
+  "atom": {
+    "node_id": "experiment_ctde_violation",
+    "name": "CTDE Training Loop",
+    "type": "experiment",
+    "level": "W5_code_implementation",
+    "context": "Centralised training loop for multi-agent policy.",
+    "code_body": "critic = CentralisedCritic(obs_all_agents, action_all_agents)\nq_target = critic(next_obs, next_actions).min(1)\nloss = mse(q_pred, q_target)",
+    "provenance": {"code_span": "lines 12-40", "source_chunk": 0}
+  },
+  "task_spec": {
+    "task_name": "smac-marl-1v1",
+    "eval_harness": "smac-v1",
+    "success_criteria": "median win_rate >= 0.9 over 32 evaluation episodes",
+    "constraints": ["CTDE", "no centralised critic at execution time"]
+  },
+  "majority_verdict": "violates_spec",
+  "expected_status": "low_reliability"
+}

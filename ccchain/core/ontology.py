@@ -1,28 +1,31 @@
-"""CC atom ontology: atom types, edge types, levels, compatibility, and dataclasses."""
+"""CC atom ontology: 12 unified types, 4 levels (W2-W5), edges, compatibility, and dataclasses.
+
+v0.3 design: type and level are 1:1 bound via TYPE_TO_LEVEL. Each type also
+declares which CoE integrity checks (I1-I4) apply via TYPE_TO_COE_CHECKS.
+"""
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
 
 # ---------------------------------------------------------------------------
-# 8 CC Atom Types
+# 12 CC Atom Types — organized by level (3 per level)
 # ---------------------------------------------------------------------------
 ATOM_TYPES: list[str] = [
-    "method",
-    "bottleneck",
-    "paper",
-    "fact",
-    "component",
-    "hypothesis",
-    "experiment",
-    "verification",
+    # W2 problem analysis
+    "problem", "bottleneck", "hypothesis",
+    # W3 solution direction
+    "method", "citation", "concept",
+    # W4 concrete solution
+    "solution", "numerical", "conclusion",
+    # W5 code implementation
+    "component", "experiment", "verification",
 ]
 
 ATOM_TYPE_SET: set[str] = set(ATOM_TYPES)
 
 # ---------------------------------------------------------------------------
-# Four knowledge levels (W2–W5)
+# Four knowledge levels (W2-W5)
 # ---------------------------------------------------------------------------
 LEVELS: list[str] = [
     "W2_problem_analysis",
@@ -46,7 +49,46 @@ LEVEL_ALIAS: dict[str, str] = {
 }
 
 # ---------------------------------------------------------------------------
-# 11 CC Edge Types (categorised)
+# Type ↔ Level binding (1:1)
+# ---------------------------------------------------------------------------
+TYPE_TO_LEVEL: dict[str, str] = {
+    "problem":      "W2_problem_analysis",
+    "bottleneck":   "W2_problem_analysis",
+    "hypothesis":   "W2_problem_analysis",
+    "method":       "W3_solution_direction",
+    "citation":     "W3_solution_direction",
+    "concept":      "W3_solution_direction",
+    "solution":     "W4_concrete_solution",
+    "numerical":    "W4_concrete_solution",
+    "conclusion":   "W4_concrete_solution",
+    "component":    "W5_code_implementation",
+    "experiment":   "W5_code_implementation",
+    "verification": "W5_code_implementation",
+}
+
+# ---------------------------------------------------------------------------
+# Type → CoE integrity checks triggered
+# ---------------------------------------------------------------------------
+TYPE_TO_COE_CHECKS: dict[str, set[str]] = {
+    "numerical":    {"I1"},
+    "citation":     {"I3"},
+    "method":       {"I4"},
+    "solution":     {"I4"},
+    "experiment":   {"I2"},
+    # problem/bottleneck/hypothesis/concept/conclusion/component/verification → no CoE checks
+}
+
+# ---------------------------------------------------------------------------
+# v0.2 → v0.3 type migration (idempotent)
+# ---------------------------------------------------------------------------
+TYPE_MIGRATION_V02_TO_V03: dict[str, str] = {
+    "paper": "citation",
+    "fact": "concept",
+    # method/solution: context-dependent, handled separately in store migration
+}
+
+# ---------------------------------------------------------------------------
+# 11 CC Edge Types (horizontal, same-level)
 # ---------------------------------------------------------------------------
 STRONG_CAUSAL_EDGES: set[str] = {"extends", "improves", "replaces", "adapts"}
 
@@ -68,7 +110,7 @@ CC_EDGE_TYPES: list[str] = [
 HIERARCHY_EDGES: list[str] = ["aggregates_to", "decomposes_into"]
 
 # ---------------------------------------------------------------------------
-# 14 Bottleneck Categories
+# 14 Bottleneck Categories (used in Rho.evidence for bottleneck-typed atoms)
 # ---------------------------------------------------------------------------
 BOTTLENECK_CATEGORIES: list[str] = [
     "overestimation_bias",
@@ -91,17 +133,64 @@ BOTTLENECK_CATEGORIES: list[str] = [
 # Type-compatibility matrix: edge_type -> set of (src_type, tgt_type) tuples
 # ---------------------------------------------------------------------------
 TYPE_COMPATIBILITY: dict[str, set[tuple[str, str]]] = {
-    "extends":        {("method", "method")},
-    "improves":       {("method", "method"), ("method", "bottleneck")},
-    "replaces":       {("method", "method"), ("component", "component")},
-    "adapts":         {("method", "method"), ("method", "bottleneck")},
-    "uses_component": {("method", "component")},
-    "compares":       {("method", "method"), ("experiment", "method")},
-    "background":     {("paper", "method")},
-    "implements":     {("method", "hypothesis"), ("method", "paper")},
-    "validates":      {("experiment", "hypothesis"), ("verification", "hypothesis"), ("method", "method")},
-    "boundary_of":    {("fact", "method"), ("fact", "experiment")},
-    "related_to":     set(),  # wildcard: any → any
+    "extends": {
+        ("method", "method"),
+        ("solution", "solution"),
+        ("component", "component"),
+    },
+    "improves": {
+        ("method", "method"),
+        ("method", "bottleneck"),
+        ("solution", "solution"),
+        ("solution", "bottleneck"),
+    },
+    "replaces": {
+        ("method", "method"),
+        ("solution", "solution"),
+        ("component", "component"),
+        ("citation", "citation"),
+    },
+    "adapts": {
+        ("method", "method"),
+        ("solution", "solution"),
+        ("method", "bottleneck"),
+        ("solution", "bottleneck"),
+    },
+    "uses_component": {
+        ("method", "component"),
+        ("solution", "component"),
+    },
+    "compares": {
+        ("method", "method"),
+        ("solution", "solution"),
+        ("experiment", "method"),
+        ("experiment", "solution"),
+    },
+    "background": {
+        ("citation", "method"),
+        ("citation", "solution"),
+        ("citation", "concept"),
+    },
+    "implements": {
+        ("solution", "method"),
+        ("component", "solution"),
+        ("component", "method"),
+        ("solution", "hypothesis"),
+    },
+    "validates": {
+        ("verification", "hypothesis"),
+        ("experiment", "hypothesis"),
+        ("verification", "numerical"),
+        ("verification", "method"),
+        ("verification", "solution"),
+    },
+    "boundary_of": {
+        ("concept", "method"),
+        ("concept", "solution"),
+        ("concept", "experiment"),
+        ("numerical", "experiment"),
+    },
+    "related_to": set(),  # wildcard: any → any
 }
 
 
@@ -134,6 +223,36 @@ class Rho:
 
 
 # ---------------------------------------------------------------------------
+# TaskSpec — external acceptance criteria for I2 (Specification Violation)
+# Mirrors ScientistOne §6 ADRS benchmark role: each task provides a fixed
+# evaluator + starter code + scoring metric. In ccchain, the caller plays ADRS.
+# ---------------------------------------------------------------------------
+@dataclass
+class TaskSpec:
+    task_name: str
+    eval_harness: str                # e.g. "smac-v1", "montezuma"
+    success_criteria: str            # e.g. "win_rate > 0.9 against built-in AI"
+    constraints: list[str] = field(default_factory=list)  # e.g. ["CTDE", "no centralised critic"]
+
+    def to_dict(self) -> dict:
+        return {
+            "task_name": self.task_name,
+            "eval_harness": self.eval_harness,
+            "success_criteria": self.success_criteria,
+            "constraints": list(self.constraints),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "TaskSpec":
+        return cls(
+            task_name=str(d.get("task_name", "")),
+            eval_harness=str(d.get("eval_harness", "")),
+            success_criteria=str(d.get("success_criteria", "")),
+            constraints=list(d.get("constraints", [])),
+        )
+
+
+# ---------------------------------------------------------------------------
 # Atom — the fundamental knowledge unit
 # ---------------------------------------------------------------------------
 @dataclass
@@ -141,7 +260,7 @@ class Atom:
     node_id: str
     name: str
     type: str  # ∈ ATOM_TYPES
-    level: str  # ∈ LEVELS
+    level: str  # ∈ LEVELS, must match TYPE_TO_LEVEL[type]
     context: str = ""
     version: int = 1
     source_pdf: str | None = None
@@ -149,7 +268,8 @@ class Atom:
     code_ref: str | None = None
     references: dict | None = None
     tags: list[str] | None = None
-    status: str = "active"  # active | needs_review | stuck | merged | transient
+    status: str = "active"  # lifecycle: active|needs_review|stuck|merged|transient
+                           # audit: verified|demoted|low_reliability|low_confidence|skipped
     embedding: "np.ndarray | None" = None
     created_at: str | None = None
     updated_at: str | None = None
@@ -163,6 +283,12 @@ class Atom:
             raise ValueError(f"Invalid atom type: {self.type!r}")
         if self.level not in LEVEL_ORDER:
             raise ValueError(f"Invalid level: {self.level!r}")
+        expected_level = TYPE_TO_LEVEL[self.type]
+        if self.level != expected_level:
+            raise ValueError(
+                f"Type-level mismatch: type={self.type!r} requires level={expected_level!r}, "
+                f"got {self.level!r}"
+            )
 
     def to_dict(self) -> dict:
         d = {

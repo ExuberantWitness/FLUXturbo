@@ -12,7 +12,14 @@ from pathlib import Path
 import igraph as ig
 import numpy as np
 
-from ccchain.core.ontology import LEVEL_ORDER, Atom, Edge, Trajectory
+from ccchain.core.ontology import (
+    LEVEL_ORDER,
+    TYPE_MIGRATION_V02_TO_V03,
+    TYPE_TO_LEVEL,
+    Atom,
+    Edge,
+    Trajectory,
+)
 
 
 class CCStore:
@@ -97,6 +104,50 @@ class CCStore:
         except sqlite3.OperationalError:
             pass
         self.db.commit()
+
+        # v0.2 → v0.3 idempotent data migration (paper→citation, fact→concept, W4 method→solution)
+        self._migrate_v02_to_v03_types()
+
+    # ------------------------------------------------------------------
+    # v0.2 → v0.3 type migration
+    # ------------------------------------------------------------------
+    def _migrate_v02_to_v03_types(self) -> int:
+        """Idempotent migration of legacy atom types to v0.3 12-type system.
+
+        Rules:
+          - paper → citation (W3_solution_direction)
+          - fact → concept (W3_solution_direction)
+          - (method, W4_concrete_solution) → solution (level stays W4)
+          - any atom whose (type, level) violates TYPE_TO_LEVEL → force canonical level
+
+        Returns: number of rows migrated. Safe to call repeatedly.
+        """
+        migrated = 0
+        # Pass 1: type renames (paper→citation, fact→concept)
+        for old_t, new_t in TYPE_MIGRATION_V02_TO_V03.items():
+            cur = self.db.execute(
+                "UPDATE cc_nodes SET type = ?, level = ? WHERE type = ?",
+                (new_t, TYPE_TO_LEVEL[new_t], old_t),
+            )
+            migrated += cur.rowcount
+
+        # Pass 2: W4 method → solution
+        cur = self.db.execute(
+            "UPDATE cc_nodes SET type = 'solution' WHERE type = 'method' AND level = 'W4_concrete_solution'"
+        )
+        migrated += cur.rowcount
+
+        # Pass 3: force type-level consistency per TYPE_TO_LEVEL
+        for t, lvl in TYPE_TO_LEVEL.items():
+            cur = self.db.execute(
+                "UPDATE cc_nodes SET level = ? WHERE type = ? AND level != ?",
+                (lvl, t, lvl),
+            )
+            migrated += cur.rowcount
+
+        if migrated > 0:
+            self.db.commit()
+        return migrated
 
     # ------------------------------------------------------------------
     # Graph persistence

@@ -1,12 +1,13 @@
 """LeapRefiner — iterative gatekeeper validation + LLM fix loop.
 
 Calls core.gatekeeper.validate() → feeds errors back to LLM → re-validates.
-Max 3 rounds by default.
+Max 3 rounds by default. v0.3: prompts instruct LLM to populate missing provenance
+when R6 fires for CoE-triggering types.
 """
 
 from __future__ import annotations
 
-from ccchain.core.gatekeeper import validate
+from ccchain.core.gatekeeper import apply_r6_demotions, validate
 from ccchain.core.ontology import Atom, Edge
 from ccchain.plugins.base import Refiner
 
@@ -40,7 +41,7 @@ class LeapRefiner(Refiner):
             fix_log["errors_found"].append(len(errors))
             fix_log["rounds"] = round_num + 1
 
-            # Only fix R1/R2/R3/R4 errors via LLM (R5 dedup is handled automatically)
+            # Only fix R1/R2/R3/R4/R6/R7 errors via LLM (R5 dedup is handled automatically)
             fixable = [e for e in errors if e["rule"] != "R5"]
             if not fixable:
                 # Only dedup errors remain — merge duplicates
@@ -60,6 +61,11 @@ class LeapRefiner(Refiner):
             if not post_errors:
                 fix_log["rounds"] = round_num + 1
                 break
+
+        # After max rounds: apply R6 demotions as final fallback (mutates remaining failing atoms)
+        final_errors = validate(current_atoms, current_edges)
+        if any(e["rule"] == "R6" for e in final_errors):
+            apply_r6_demotions(current_atoms)
 
         return current_atoms, current_edges, fix_log
 
@@ -113,6 +119,11 @@ class LeapRefiner(Refiner):
                             a.level = action["level"]
                         if "context" in action:
                             a.context = action["context"]
+                        if "provenance" in action and action["provenance"]:
+                            # Merge new provenance keys over existing
+                            if a.provenance is None:
+                                a.provenance = {}
+                            a.provenance.update(action["provenance"])
 
             elif action_type == "update_edge":
                 src = action.get("src", "")
@@ -192,10 +203,18 @@ VALIDATION ERRORS:
 ORIGINAL TEXT (for context):
 {original_text}
 
-Fix the atoms and edges to resolve ALL errors. Return JSON with a "fixes" array:
+Fix the atoms and edges to resolve ALL errors. Common fixes:
+- R6: For numerical/citation/method/solution/experiment atoms missing provenance, populate it.
+  numerical → provenance: {{"score": <float>, "score_std": <float|null>}}
+  citation → provenance: {{"raw_citation": "<bibliographic string>"}}
+  method/solution/experiment → provenance: {{"code_span": "<location>", "source_chunk": <int>}}
+- R7: If type and level mismatch, change either so they are consistent (type→level via TYPE_TO_LEVEL).
+- R2: If edge endpoints have incompatible types, change one atom's type.
+
+Return JSON with a "fixes" array:
 {{
   "fixes": [
-    {{"action": "update_atom", "node_id": "...", "type": "...", "level": "..."}},
+    {{"action": "update_atom", "node_id": "...", "type": "...", "level": "...", "provenance": {{"score": 0.5}}}},
     {{"action": "update_edge", "src": "...", "tgt": "...", "relation": "...", "rho": {{"bottleneck": "...", "mechanism": "...", "tradeoff": "...", "confidence": 0.8}}}},
     {{"action": "remove_edge", "src": "...", "tgt": "..."}}
   ]

@@ -1,0 +1,13 @@
+{
+  "_comment": "CoE I3 (Reference Verification) scenario. citation atom referencing a fabricated paper that no external API (Semantic Scholar/arXiv/OpenAlex/CrossRef) can resolve. Expected: all APIs return None → status='low_reliability' (hard fail).",
+  "atom": {
+    "node_id": "citation_fake_smith",
+    "name": "Smith et al. Citation",
+    "type": "citation",
+    "level": "W3_solution_direction",
+    "context": "Following the framework of Smith et al. (2099) on neural teleportation.",
+    "provenance": {"raw_citation": "Smith, J., Doe, A. Neural Teleportation Networks. J. Fake Stud., 2099."}
+  },
+  "api_results": "all_none",
+  "expected_status": "low_reliability"
+}

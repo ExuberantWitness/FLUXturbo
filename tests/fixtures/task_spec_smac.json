@@ -1,0 +1,11 @@
+{
+  "_comment": "Sample TaskSpec mirroring ScientistOne's external ADRS benchmark role. Caller provides evaluation criteria; ccchain's I2 check uses these to audit experiment atoms. TaskSpec is ALWAYS externally provided, never LLM-extracted from the paper (avoids self-grading circularity).",
+  "task_name": "smac-marl-1v1",
+  "eval_harness": "smac-v1",
+  "success_criteria": "median win_rate >= 0.9 over 32 evaluation episodes",
+  "constraints": [
+    "CTDE",
+    "no centralised critic at execution time",
+    "parameter sharing across agents"
+  ]
+}

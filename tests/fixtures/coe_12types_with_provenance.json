@@ -1,0 +1,17 @@
+{
+  "_comment": "CoE fixture covering all 12 unified atom types with representative provenance. Each type either triggers a CoE check (numerical/citation/method/solution/experiment) or is skipped (subjective atoms). Used to verify the audit pipeline classifies types correctly and that provenance shapes match TYPE_TO_COE_CHECKS.",
+  "atoms": [
+    {"node_id": "a_problem", "name": "Credit noise", "type": "problem", "level": "W2_problem_analysis", "context": "CTDE suffers from high-variance credit noise.", "expected_checks": []},
+    {"node_id": "a_bottleneck", "name": "Variance bottleneck", "type": "bottleneck", "level": "W2_problem_analysis", "context": "Policy gradient variance dominates signal.", "expected_checks": []},
+    {"node_id": "a_hypothesis", "name": "OT hypothesis", "type": "hypothesis", "level": "W2_problem_analysis", "context": "OT distance may reduce credit variance.", "expected_checks": []},
+    {"node_id": "a_method", "name": "OT method", "type": "method", "level": "W3_solution_direction", "context": "Optimal transport credit assignment.", "provenance": {"code_span": "sec 3"}, "expected_checks": ["I4"]},
+    {"node_id": "a_citation", "name": "Sinkhorn ref", "type": "citation", "level": "W3_solution_direction", "context": "Cuturi 2013 Sinkhorn distances.", "provenance": {"raw_citation": "Cuturi, M. Sinkhorn Distances: Lightspeed Computation of Optimal Transport. NeurIPS 2013."}, "expected_checks": ["I3"]},
+    {"node_id": "a_concept", "name": "OT concept", "type": "concept", "level": "W3_solution_direction", "context": "Definition of optimal transport plan.", "expected_checks": []},
+    {"node_id": "a_solution", "name": "Sinkhorn solution", "type": "solution", "level": "W4_concrete_solution", "context": "Sinkhorn with entropy reg lambda=0.1.", "provenance": {"code_span": "sec 4"}, "expected_checks": ["I4"]},
+    {"node_id": "a_numerical", "name": "Win rate 0.9", "type": "numerical", "level": "W4_concrete_solution", "context": "Win rate of 0.9 on SMAC.", "provenance": {"score": 0.9, "score_std": 0.02}, "expected_checks": ["I1"]},
+    {"node_id": "a_conclusion", "name": "OT helps", "type": "conclusion", "level": "W4_concrete_solution", "context": "OT-based credit improves stability.", "expected_checks": []},
+    {"node_id": "a_component", "name": "sinkhorn()", "type": "component", "level": "W5_code_implementation", "context": "Sinkhorn solver wrapper.", "expected_checks": []},
+    {"node_id": "a_experiment", "name": "SMAC experiment", "type": "experiment", "level": "W5_code_implementation", "context": "Training loop on SMAC.", "provenance": {"code_span": "lines 1-80"}, "expected_checks": ["I2"]},
+    {"node_id": "a_verification", "name": "Ablation", "type": "verification", "level": "W5_code_implementation", "context": "Ablation removing entropy reg.", "expected_checks": []}
+  ]
+}

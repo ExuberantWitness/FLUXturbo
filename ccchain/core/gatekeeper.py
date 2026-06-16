@@ -1,4 +1,13 @@
-"""5-layer validation rules — pure functions, no LLM dependency."""
+"""7-layer validation rules — pure functions, no LLM dependency.
+
+R1 Schema: type/level/relation in legal sets, edge endpoints exist.
+R2 Type Compatibility: edge endpoints in TYPE_COMPATIBILITY matrix.
+R3 Rho Completeness: strong-causal edges must carry rho evidence.
+R4 Level Consistency: hierarchy edges must cross levels correctly.
+R5 Dedup Detection: same name + type + level → duplicate suggestion.
+R6 Provenance Presence: numerical/citation/method/solution/experiment must have provenance.
+R7 Type-Level Consistency: atom.type must map to atom.level via TYPE_TO_LEVEL.
+"""
 
 from __future__ import annotations
 
@@ -9,20 +18,32 @@ from ccchain.core.ontology import (
     LEVEL_ORDER,
     STRONG_CAUSAL_EDGES,
     TYPE_COMPATIBILITY,
+    TYPE_TO_LEVEL,
     Atom,
     Edge,
 )
 
 
-def validate(atoms: list[Atom], edges: list[Edge]) -> list[dict]:
-    """Run all 5 validation layers. Returns list of error dicts (empty = pass).
+# Type → required provenance keys (R6)
+PROVENANCE_REQUIREMENTS: dict[str, list[str]] = {
+    "numerical":  ["score"],
+    "citation":   ["raw_citation"],
+    "method":     [],      # any non-empty provenance
+    "solution":   [],
+    "experiment": [],
+}
 
-    Rule 1 — Schema: type/level/relation in legal sets, edge endpoints exist.
-    Rule 2 — Type Compatibility: edge endpoints in TYPE_COMPATIBILITY matrix.
-    Rule 3 — Rho Completeness: strong-causal edges must carry rho evidence.
-    Rule 4 — Level Consistency: hierarchy edges must cross levels correctly.
-    Rule 5 — Dedup Detection: same name + type + level → duplicate suggestion.
-    """
+# Type demotion map when provenance missing beyond refine rounds (R6 fallback)
+# Same-layer demotion only; preserves level, loses CoE eligibility.
+TYPE_DEMOTION_MAP: dict[str, str] = {
+    "numerical": "conclusion",   # W4 → W4
+    "citation":  "concept",      # W3 → W3
+    # method/solution/experiment have no same-layer demotion target; marked needs_review
+}
+
+
+def validate(atoms: list[Atom], edges: list[Edge]) -> list[dict]:
+    """Run all 7 validation layers. Returns list of error dicts (empty = pass)."""
     errors: list[dict] = []
     atom_ids: set[str] = {a.node_id for a in atoms}
 
@@ -32,8 +53,28 @@ def validate(atoms: list[Atom], edges: list[Edge]) -> list[dict]:
             errors.append(_err("R1", atom.node_id, "Atom node_id is empty"))
         if atom.type not in ATOM_TYPE_SET:
             errors.append(_err("R1", atom.node_id, f"Invalid atom type: {atom.type!r}"))
+            continue  # downstream rules assume valid type
         if atom.level not in LEVEL_ORDER:
             errors.append(_err("R1", atom.node_id, f"Invalid level: {atom.level!r}"))
+            continue
+
+        # Rule 7 — Type-Level Consistency
+        expected_level = TYPE_TO_LEVEL.get(atom.type)
+        if expected_level is not None and atom.level != expected_level:
+            errors.append(_err("R7", atom.node_id,
+                f"Type {atom.type!r} requires level {expected_level!r}, got {atom.level!r}"))
+
+        # Rule 6 — Provenance Presence (by type)
+        if atom.type in PROVENANCE_REQUIREMENTS:
+            required_keys = PROVENANCE_REQUIREMENTS[atom.type]
+            if not atom.provenance:
+                errors.append(_err("R6", atom.node_id,
+                    f"{atom.type!r} atom requires provenance (missing)"))
+            elif required_keys:
+                missing = [k for k in required_keys if atom.provenance.get(k) is None]
+                if missing:
+                    errors.append(_err("R6", atom.node_id,
+                        f"{atom.type!r} atom provenance missing keys: {missing}"))
 
     all_edge_types = set(CC_EDGE_TYPES) | set(HIERARCHY_EDGES)
 
@@ -84,6 +125,40 @@ def validate(atoms: list[Atom], edges: list[Edge]) -> list[dict]:
             seen[key] = atom.node_id
 
     return errors
+
+
+def apply_r6_demotions(atoms: list[Atom]) -> int:
+    """Fallback after refiner exhaustion: mutate atoms in-place to satisfy R6.
+
+    - numerical without provenance.score → type='conclusion', status='demoted'
+    - citation without provenance.raw_citation → type='concept', status='demoted'
+    - method/solution/experiment without any provenance → status='needs_review' (no type change)
+
+    Returns count of atoms mutated. Caller should re-validate after.
+    """
+    count = 0
+    for atom in atoms:
+        if atom.type not in PROVENANCE_REQUIREMENTS:
+            continue
+        required = PROVENANCE_REQUIREMENTS[atom.type]
+        ok = bool(atom.provenance)
+        if ok and required:
+            ok = all(atom.provenance.get(k) is not None for k in required)
+        if ok:
+            continue
+
+        # R6 still failing — apply demotion
+        if atom.type in TYPE_DEMOTION_MAP:
+            new_type = TYPE_DEMOTION_MAP[atom.type]
+            atom.type = new_type
+            atom.level = TYPE_TO_LEVEL[new_type]
+            atom.status = "demoted"
+            count += 1
+        else:
+            # method/solution/experiment — no same-layer demotion target
+            atom.status = "needs_review"
+            count += 1
+    return count
 
 
 def _err(rule: str, target: str, message: str) -> dict:

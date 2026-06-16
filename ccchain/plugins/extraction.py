@@ -3,6 +3,8 @@
 Phase 1: Extract W2 (problem analysis) + W3 (solution directions) — abstract layer.
 Phase 2: Extract W4 (concrete solutions) + W5 (code implementations) — concrete layer,
          conditioned on Phase 1 results.
+
+v0.3: Prompts emit type ∈ 12-type system and provenance payload for CoE-triggering types.
 """
 
 from __future__ import annotations
@@ -11,14 +13,21 @@ import time
 import uuid
 
 from ccchain.core.ontology import (
-    ATOM_TYPES,
     BOTTLENECK_CATEGORIES,
-    CC_EDGE_TYPES,
     Atom,
     Edge,
     Rho,
 )
 from ccchain.plugins.base import Extractor
+
+
+# Default type when LLM omits the type field (per-level fallback)
+_LEVEL_DEFAULT_TYPE: dict[str, str] = {
+    "W2_problem_analysis": "bottleneck",
+    "W3_solution_direction": "method",
+    "W4_concrete_solution": "solution",
+    "W5_code_implementation": "component",
+}
 
 
 class TwoPhaseExtractor(Extractor):
@@ -76,28 +85,37 @@ class TwoPhaseExtractor(Extractor):
         w2_data = response.get("W2_problem_analysis", {})
         if w2_data:
             w2_id = self._id("W2", w2_data.get("name", "problem"), source_pdf)
+            w2_type = w2_data.get("type") or "bottleneck"
             atoms.append(Atom(
                 node_id=w2_id,
                 name=w2_data.get("name", "Untitled Problem"),
-                type="bottleneck",
+                type=w2_type,
                 level="W2_problem_analysis",
                 context=w2_data.get("context", ""),
                 source_pdf=source_pdf,
                 created_at=now,
                 updated_at=now,
+                provenance={"phase": "extract", "via": "TwoPhaseExtractor.phase1"},
             ))
 
             for w3_raw in response.get("W3_solution_directions", []):
                 w3_id = self._id("W3", w3_raw.get("name", "solution"), source_pdf)
+                w3_type = w3_raw.get("type") or "method"
+                w3_prov = w3_raw.get("provenance") or {"phase": "extract", "via": "TwoPhaseExtractor.phase1"}
+                # Citation atoms need raw_citation
+                if w3_type == "citation" and "raw_citation" not in w3_prov:
+                    w3_prov["raw_citation"] = w3_raw.get("context", "")[:300]
+
                 atoms.append(Atom(
                     node_id=w3_id,
                     name=w3_raw.get("name", "Untitled Direction"),
-                    type="method",
+                    type=w3_type,
                     level="W3_solution_direction",
                     context=w3_raw.get("context", ""),
                     source_pdf=source_pdf,
                     created_at=now,
                     updated_at=now,
+                    provenance=w3_prov,
                 ))
                 edges.append(Edge(
                     src=w2_id,
@@ -153,15 +171,23 @@ class TwoPhaseExtractor(Extractor):
 
         for w4_raw in response.get("W4_concrete_solutions", []):
             w4_id = self._id("W4", w4_raw.get("name", "solution"), source_pdf)
+            w4_type = w4_raw.get("type") or "solution"
+            w4_prov = w4_raw.get("provenance") or {"phase": "extract", "via": "TwoPhaseExtractor.phase2"}
+            # Numerical atoms need score
+            if w4_type == "numerical" and "score" not in w4_prov:
+                # Try to parse score from context
+                w4_prov["score"] = w4_raw.get("score")
+
             atoms.append(Atom(
                 node_id=w4_id,
                 name=w4_raw.get("name", "Untitled Solution"),
-                type="method",
+                type=w4_type,
                 level="W4_concrete_solution",
                 context=w4_raw.get("context", ""),
                 source_pdf=source_pdf,
                 created_at=now,
                 updated_at=now,
+                provenance=w4_prov,
             ))
 
             # Link to parent W3
@@ -176,16 +202,25 @@ class TwoPhaseExtractor(Extractor):
             for w5_raw in w4_raw.get("W5_implementations", []):
                 w5_id = self._id("W5", w5_raw.get("name", "impl"), source_pdf)
                 code_ref = w5_raw.get("code_ref", "")
+                w5_type = w5_raw.get("type") or "component"
+                w5_prov = w5_raw.get("provenance")
+                # experiment type needs provenance
+                if w5_type == "experiment" and not w5_prov:
+                    w5_prov = {"phase": "extract", "via": "TwoPhaseExtractor.phase2",
+                               "code_span": code_ref or "unknown"}
+
                 atoms.append(Atom(
                     node_id=w5_id,
                     name=w5_raw.get("name", "Untitled Implementation"),
-                    type="component",
+                    type=w5_type,
                     level="W5_code_implementation",
                     context=w5_raw.get("context", ""),
                     code_ref=code_ref if code_ref else None,
+                    code_body=w5_raw.get("code_body"),
                     source_pdf=source_pdf,
                     created_at=now,
                     updated_at=now,
+                    provenance=w5_prov,
                 ))
                 edges.append(Edge(
                     src=w4_id,
@@ -238,17 +273,22 @@ You are a research analyst extracting structured knowledge from an academic pape
 
 Extract:
 1. W2_problem_analysis: The core problem/bottleneck this paper addresses. Exactly ONE.
-   Categorize using: {bottleneck_categories}
+   Type ∈ ["problem", "bottleneck", "hypothesis"].
+   If "bottleneck", categorize using: {bottleneck_categories}
 2. W3_solution_directions: The high-level solution approaches proposed (2-5 items).
+   Type ∈ ["method", "citation", "concept"] per item.
+   Use "citation" when the atom is primarily citing someone else's work — then provide
+   provenance.{{"raw_citation": "<full bibliographic string>"}}.
    Include "compares_to" for alternative directions mentioned/discussed in the paper.
 
-For each atom, provide: name (short label), context (1-2 sentence summary from the text).
+For each atom, provide: name (short label), context (1-2 sentence summary from the text),
+type (one of the allowed values for that level), and provenance (optional for non-citation).
 
 Return JSON:
 {{
-  "W2_problem_analysis": {{"name": "...", "context": "..."}},
+  "W2_problem_analysis": {{"name": "...", "context": "...", "type": "bottleneck"}},
   "W3_solution_directions": [
-    {{"name": "...", "context": "...", "compares_to": ["alt_name_1"]}}
+    {{"name": "...", "context": "...", "type": "method", "provenance": {{"code_span": "..."}}, "compares_to": ["alt_name_1"]}}
   ]
 }}
 
@@ -263,14 +303,22 @@ Phase 1 identified these W3 solution directions:
 {w3_summary}
 
 Now extract:
-1. W4_concrete_solutions: Specific methods/algorithms. For each, include:
+1. W4_concrete_solutions: Specific methods/algorithms. Type ∈ ["solution", "numerical", "conclusion"].
+   - "solution": A design or algorithm description.
+   - "numerical": A specific quantitative claim/result. MUST include provenance: {{"score": <float>, "score_std": <float|null>}}.
+   - "conclusion": A subjective interpretation or takeaway.
+   For each, include:
    - name, context (what it does and how)
    - parent_W3_id: the W3 name this solution belongs to
    - extends: names of prior methods this extends
    - improves: names of prior methods this improves upon
    - extends_rho/improves_rho: {{"bottleneck": "...", "mechanism": "...", "tradeoff": "...", "confidence": 0.8}}
 
-2. W5_implementations: Code-level details for each W4. Include name, context, code_ref (function/class name).
+2. W5_implementations: Code-level details for each W4. Type ∈ ["component", "experiment", "verification"].
+   - "component": A code module/class/function.
+   - "experiment": An experimental setup that requires provenance {{"code_span": "...", "source_chunk": <int>}}.
+   - "verification": An ablation or sanity-check result.
+   Include name, context, code_ref (function/class name), code_body (full text if available).
 
 Return JSON:
 {{
@@ -278,13 +326,14 @@ Return JSON:
     {{
       "name": "...",
       "context": "...",
+      "type": "solution",
       "parent_W3_id": "...",
       "extends": ["prior_method_name"],
       "improves": ["prior_method_name"],
       "extends_rho": {{"bottleneck": "...", "mechanism": "...", "tradeoff": "...", "confidence": 0.8}},
       "improves_rho": {{"bottleneck": "...", "mechanism": "...", "tradeoff": "...", "confidence": 0.8}},
       "W5_implementations": [
-        {{"name": "...", "context": "...", "code_ref": "function_name"}}
+        {{"name": "...", "context": "...", "type": "component", "code_ref": "function_name", "code_body": "..."}}
       ]
     }}
   ]

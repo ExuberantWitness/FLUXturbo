@@ -35,3 +35,13 @@ class Config:
         "W4": 0.2,
         "W5": 0.1,
     })
+
+    # --- Reference resolution (I3) ---
+    reference_api_timeout: float = 2.0
+    reference_api_max_retries: int = 3
+    reference_api_keys: dict[str, str] = field(default_factory=dict)
+    # keys: "semantic_scholar", "openalex", "crossref"
+
+    # --- CoE Audit ---
+    audit_majority_k: int = 5
+    audit_i1_k: int = 1

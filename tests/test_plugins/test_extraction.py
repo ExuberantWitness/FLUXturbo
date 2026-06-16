@@ -55,7 +55,7 @@ def test_extract_phase2_parse(mock_chat):
 
     assert len(w4_atoms) >= 1
     assert len(w5_atoms) >= 1
-    assert w4_atoms[0].type == "method"
+    assert w4_atoms[0].type == "solution"
     assert w5_atoms[0].type == "component"
 
     # Check that strong-causal edges have rho
