@@ -301,6 +301,20 @@ def main():
             print(f"    statuses: {Counter(r['status'] for r in all_res)}")
         print(f"  status='low_reliability':    {len(low_res)} atoms (audit backtrace)")
 
+    # ---- HTML visualization ----
+    out_path = os.path.join(_REPO_ROOT, "blueprint_output", "audit_report.html")
+    try:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "audit_html", os.path.join(_REPO_ROOT, "scripts", "audit_html.py"))
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        abs_path = mod.build_audit_html(ccchain._store, reports, out_path)
+        print(f"\nHTML report written: {abs_path}")
+        print("Open it in a browser to explore the status-colored graph + per-atom CoE verdicts.")
+    except Exception as exc:
+        print(f"\n! HTML generation failed: {exc}")
+
     reset_singletons()
     print("\nDone. DB was in a temp dir and is not persisted.")
 
