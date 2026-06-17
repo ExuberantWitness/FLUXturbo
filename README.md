@@ -320,6 +320,90 @@ PDF 文献
 
 ---
 
+## 🎨 可视化报告 (ccchain.visualize)
+
+`ccchain.visualize` 是一个**独立的报告工具模块**，将 CoE 审计结果渲染成自包含的交互式 HTML（单一外部依赖：[vis-network](https://visjs.org/) CDN，无需本地 JS 安装）。
+
+> 💡 **定位**：它是报告工具，**不是第 4 个 SDK 方法**（不破坏 `ingest` / `search` / `evaluate` 三接口原则）。任何持有 `CCStore` + 审计报告的场景都可调用。
+
+### 一行调用
+
+```python
+from ccchain.visualize import build_audit_html
+
+path = build_audit_html(store, reports, "audit_report.html")
+# → 返回写入文件的绝对路径
+```
+
+### 参数
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| `store` | `CCStore` | 持有 atoms + 图边的存储；按全部 4 个层级、全部 status 查询 |
+| `reports` | `list` | 每项是 `(label, audit_report)` 二元组，**或** `(label, ingest_result, audit_report)` 三元组（内部归一化，`ingest()` 的返回值可直接喂入） |
+| `output_path` | `str` | 输出 `.html` 路径（自动创建父目录） |
+| `title` | `str` | 可选关键字参数，HTML `<title>` 与页眉 |
+
+`audit_report` 即 CoE 验证器返回的 dict（`cpr` / `atoms_audited` / `atoms_passed` / `atoms_failed` / `atoms_skipped` / `failures_by_check` / `per_atom`）。
+
+### 完整示例：ingest → 审计 → 可视化
+
+```python
+import ccchain
+from ccchain.core.ontology import TaskSpec
+from ccchain.visualize import build_audit_html
+
+# 1. 摄入 + 自动 CoE 审计 (I1/I2/I3/I4)
+result, err = ccchain.ingest(
+    segments, source_pdf="cop-q.pdf",
+    task_spec=TaskSpec("safety-gym", "safety-gym-v1",
+                       "return>=0.9 & 0 violations", ["CTDE"]),
+)
+# result["audit_report"] 含 cpr、各检查失败计数、逐 atom 裁决
+
+# 2. 渲染交互式 HTML 报告（store 是 ingest() 初始化的单例）
+build_audit_html(
+    ccchain._store,
+    [("cop-q.pdf", result["audit_report"])],
+    "blueprint_output/audit_report.html",
+)
+```
+
+**跨进程 / 离线模式**：直接从磁盘加载已有数据库，无需在同一进程跑 ingest：
+
+```python
+from ccchain.core.store import CCStore
+from ccchain.visualize import build_audit_html
+
+store = CCStore("blueprint_output/cc_base.db", "blueprint_output/")
+build_audit_html(store, [("cop-q.pdf", audit_report)], "audit_report.html")
+```
+
+### 报告内容
+
+| 元素 | 编码 |
+|------|------|
+| **节点填充色** | 审计 status（绿 verified / 灰 skipped / 橙 low_confidence / 红 low_reliability / 紫 demoted） |
+| **节点边框色** | 规约层级（W2 红 → W3 橙 → W4 蓝 → W5 绿），两个维度同时可见 |
+| **节点大小** | 层级金字塔（W2 最大 → W5 最小） |
+| **边** | 按关系着色：`decomposes_into`（自上而下规约链，蓝虚线）/ `aggregates_to`（自下而上，橙实线）/ `extends`/`improves`/`compares` 等 |
+| **每篇论文卡片** | CPR 数值 + status 分布条 + I1/I2/I3/I4 失败计数 |
+| **点击节点** | 右侧详情面板：context、逐项 CoE 检查裁决（passed/failed/skipped + reasoning）、provenance |
+| **状态过滤按钮** | 按 status 一键隐藏/显示节点子集 |
+
+层级规约链 `W2 → W3 → W4 → W5`（decomposes_into）在图上是完整连续的纵向链，双向 O(1) 遍历由 `aggregates_to` 反向边支持。
+
+### 运行 demo
+
+```bash
+# 用 ARIS/pdf 下的真实论文跑完整管线并生成 audit_report.html
+python scripts/audit_demo_real_pdfs.py
+```
+
+> 注：demo 在无本地 LLM 服务时用确定性 mock 替换 LLM/embedding/引用 API 层，但真实 PDF 文本走完整 ingest → refine → store → reduce → audit 管线。
+
+---
+
 ## 📋 Roadmap
 
 ### Done / 已完成
@@ -401,5 +485,15 @@ MIT
 **Why it matters:** Traditional spaCy NER produces garbage entities (`g`, `l`, `entity-xxxxx`). FLUXturbo produces readable, typed atoms (`ReMAC`[method], `credit_assignment`[bottleneck]) with traceable evidence chains. The knowledge graph becomes a genuine reasoning substrate rather than a visualization toy.
 
 Quick start: `pip install mcp openai httpx && python -m cc_blueprint`
+
+**ccchain (v0.2/v0.3) layer** — the `ccchain` package adds a three-method Python SDK (`ingest` / `search` / `evaluate`) over the W2→W3→W4→W5 knowledge pyramid, a 12-type unified atom system, and a Chain-of-Evidence (CoE) integrity audit (I1 score / I2 spec / I3 reference / I4 method-code) computing a CPR (Claim Provenance Rate). Visualization is a standalone reporting module:
+
+```python
+from ccchain.visualize import build_audit_html
+build_audit_html(store, reports, "audit_report.html")
+# nodes: fill = CoE audit status, border = W2/W3/W4/W5 spec level
+```
+
+See the 🎨 可视化报告 section above for full usage.
 
 See the Chinese sections above for full documentation.
