@@ -41,6 +41,14 @@ CHECK_LABELS = {
     "I4": "Method-Code Alignment",
 }
 
+# Level → border color + semantic role (specification hierarchy W2→W3→W4→W5)
+LEVEL_BORDER = {
+    "W2_problem_analysis":   {"border": "#ef4444", "label": "W2 Problem"},
+    "W3_solution_direction": {"border": "#f59e0b", "label": "W3 Direction"},
+    "W4_concrete_solution":  {"border": "#3b82f6", "label": "W4 Solution"},
+    "W5_code_implementation":{"border": "#10b981", "label": "W5 Code"},
+}
+
 
 def build_audit_html(store, reports, output_path: str) -> str:
     """Generate the audit HTML. Returns the absolute output path."""
@@ -134,9 +142,21 @@ def build_audit_html(store, reports, output_path: str) -> str:
 
     # ── Assemble HTML ───────────────────────────────────────────────────
     cards_html = _render_cards(cards)
-    legend_html = "".join(
+    status_legend = "".join(
         f'<div class="legend-item"><div class="dot" style="background:{c["bg"]}"></div>{c["label"]}</div>'
         for c in STATUS_COLORS.values()
+    )
+    # Specification-hierarchy legend: W2 → W3 → W4 → W5 (node BORDERS carry these colors)
+    level_order = ["W2_problem_analysis", "W3_solution_direction",
+                   "W4_concrete_solution", "W5_code_implementation"]
+    level_legend_items = "".join(
+        f'<div class="legend-item"><div class="ring" style="border-color:{LEVEL_BORDER[lvl]["border"]}"></div>'
+        f'{LEVEL_BORDER[lvl]["label"]}</div>'
+        for lvl in level_order
+    )
+    legend_html = (
+        f'<div class="legend-group"><span class="lg-title">fill=status</span>{status_legend}</div>'
+        f'<div class="legend-group"><span class="lg-title">border=level (spec chain W2→W3→W4→W5)</span>{level_legend_items}</div>'
     )
     status_present = sorted({n["status"] for n in nodes})
     toggle_buttons = "".join(
@@ -164,6 +184,9 @@ def build_audit_html(store, reports, output_path: str) -> str:
         payload=json.dumps(payload),
         status_palette_json=json.dumps(
             {k: v["bg"] for k, v in STATUS_COLORS.items()}
+        ),
+        level_border_json=json.dumps(
+            {k: v["border"] for k, v in LEVEL_BORDER.items()}
         ),
     )
     with open(output_path, "w", encoding="utf-8") as f:
@@ -254,8 +277,12 @@ h1 .sub {{ font-size: 12px; color: #94a3b8; font-weight: 400; }}
 .btn:hover {{ background: #334155; }}
 .btn.active {{ filter: brightness(1.3); }}
 #legend {{ display: flex; gap: 12px; align-items: center; margin-left: auto; flex-wrap: wrap; }}
-.legend-item {{ display: flex; align-items: center; gap: 5px; font-size: 10px; color: #94a3b8; }}
+.legend-item {{ display: flex; align-items: center; gap: 5px; font-size: 10px; color: #94a3b8; white-space: nowrap; }}
+.legend-group {{ display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 8px; border-left: 1px solid #334155; }}
+.legend-group:first-child {{ border-left: none; }}
+.lg-title {{ font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: #64748b; }}
 .dot {{ width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }}
+.ring {{ width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 2px solid; background: transparent; }}
 #wrapper {{ display: flex; height: calc(100vh - 290px); min-height: 420px; }}
 #mynetwork {{ flex: 1; background: #0f172a; }}
 #info-panel {{ width: 360px; background: #1e293b; border-left: 1px solid #334155; padding: 18px; overflow-y: auto; font-size: 13px; line-height: 1.6; }}
@@ -303,13 +330,16 @@ footer {{ position: fixed; bottom: 4px; left: 12px; color: #334155; font-size: 1
 <script>
 const data = {payload};
 const statusColor = {status_palette_json};
+const levelBorder = {level_border_json};
 const checkLabels = data.check_labels;
 
 const nodes = new vis.DataSet(data.nodes.map(n => ({{
   ...n,
-  color: {{ background: statusColor[n.status] || '#3b82f6', border: '#0f172a',
-            highlight: {{ background: statusColor[n.status] || '#3b82f6', border: '#e2e8f0' }},
-            hover: {{ background: statusColor[n.status] || '#3b82f6', border: '#cbd5e1' }} }},
+  borderWidth: 3,
+  color: {{ background: statusColor[n.status] || '#3b82f6',
+            border: levelBorder[n.cc_level] || '#0f172a',
+            highlight: {{ background: statusColor[n.status] || '#3b82f6', border: '#f1f5f9' }},
+            hover: {{ background: statusColor[n.status] || '#3b82f6', border: '#e2e8f0' }} }},
 }})));
 const edges = new vis.DataSet(data.edges);
 

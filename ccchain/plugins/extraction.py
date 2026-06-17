@@ -160,10 +160,10 @@ class TwoPhaseExtractor(Extractor):
             model=self.model,
         )
 
-        return self._parse_phase2(response, source_pdf)
+        return self._parse_phase2(response, source_pdf, phase1_atoms)
 
     def _parse_phase2(
-        self, response: dict, source_pdf: str
+        self, response: dict, source_pdf: str, phase1_atoms: list[Atom] | None = None
     ) -> tuple[list[Atom], list[Edge]]:
         atoms: list[Atom] = []
         edges: list[Edge] = []
@@ -190,13 +190,24 @@ class TwoPhaseExtractor(Extractor):
                 provenance=w4_prov,
             ))
 
-            # Link to parent W3
-            parent_w3 = w4_raw.get("parent_W3_id", "")
-            edges.append(Edge(
-                src=w4_id,
-                relation="aggregates_to",
-                tgt=parent_w3 if parent_w3 else "",
-            ))
+            # Link to parent W3 (resolve name -> node_id so the edge doesn't dangle)
+            parent_w3_id = self._resolve_w3_id(
+                w4_raw.get("parent_W3_id", ""), phase1_atoms
+            )
+            if parent_w3_id:
+                # Top-down decomposes_into keeps the W2->W3->W4->W5 chain consistent
+                # (W2->W3 and W4->W5 already use decomposes_into).
+                edges.append(Edge(
+                    src=parent_w3_id,
+                    relation="decomposes_into",
+                    tgt=w4_id,
+                ))
+                # Dual-retention reverse edge for O(1) upward traversal.
+                edges.append(Edge(
+                    src=w4_id,
+                    relation="aggregates_to",
+                    tgt=parent_w3_id,
+                ))
 
             # W5 children
             for w5_raw in w4_raw.get("W5_implementations", []):
@@ -252,6 +263,30 @@ class TwoPhaseExtractor(Extractor):
         short_uuid = uuid.uuid4().hex[:8]
         pdf_tag = source_pdf.replace(".pdf", "").replace(" ", "_")[:20] if source_pdf else "doc"
         return f"{prefix}_{slug}_{pdf_tag}_{short_uuid}"
+
+    @staticmethod
+    def _resolve_w3_id(parent_ref: str, phase1_atoms: list[Atom] | None) -> str:
+        """Resolve a parent_W3_id reference (usually the W3 *name*) to its node_id.
+
+        The Phase 2 prompt asks the LLM for the parent W3 by name, but edges need
+        the actual node_id. Without this, the W3->W4 link dangles and gatekeeper
+        R1 drops it — breaking the W2->W3->W4->W5 level chain.
+        """
+        if not parent_ref or not phase1_atoms:
+            return ""
+        ref = parent_ref.strip().lower()
+        # Exact name match first, then slugified prefix match.
+        for a in phase1_atoms:
+            if a.level != "W3_solution_direction":
+                continue
+            if a.name.strip().lower() == ref:
+                return a.node_id
+        for a in phase1_atoms:
+            if a.level != "W3_solution_direction":
+                continue
+            if a.name.strip().lower().startswith(ref) or ref.startswith(a.name.strip().lower()):
+                return a.node_id
+        return ""
 
 
 def _parse_rho(data: dict) -> Rho | None:
