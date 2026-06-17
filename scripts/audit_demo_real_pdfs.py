@@ -119,7 +119,16 @@ _P3 = {
 
 def make_phase1(text: str) -> dict:
     topic = topic_of(text)
-    return {"W2_problem_analysis": dict(_P1[topic]), "W3_solution_directions": list(_P3[topic])}
+    # One W2 direction containing the topic's method/citation as W3 approaches.
+    return {
+        "W1_problem": dict(_P1[topic]),
+        "W2_directions": [
+            {"name": f"{topic} Direction", "type": "method",
+             "context": f"{topic} research direction.",
+             "provenance": {"code_span": "section 2"},
+             "W3_approaches": list(_P3[topic])},
+        ],
+    }
 
 
 def make_phase2(text: str, paper_idx: int = 0) -> dict:
@@ -145,7 +154,7 @@ def make_phase2(text: str, paper_idx: int = 0) -> dict:
             "parent_W3_id": parent,
             "extends": [], "improves": [],
         }
-    w4["W5_implementations"] = [
+    w4["W5_code"] = [
         {"name": f"{topic}_training_experiment", "type": "experiment",
          "context": "End-to-end training loop.",
          "code_ref": "train",
@@ -155,7 +164,7 @@ def make_phase2(text: str, paper_idx: int = 0) -> dict:
          "context": "Core algorithmic component.",
          "code_ref": "core_module", "code_body": "def core_module(x): return x"},
     ]
-    return {"W4_concrete_solutions": [w4]}
+    return {"W4_implementations": [w4]}
 
 
 # ---------------------------------------------------------------------------
@@ -171,9 +180,9 @@ def mock_embed():
 def make_chat_json(state):
     def _fn(messages, **kwargs):
         msg = messages[0]["content"] if messages else ""
-        if "W2_problem_analysis" in msg:
+        if "W1_problem" in msg:
             return make_phase1(msg)
-        if "W4_concrete_solutions" in msg:
+        if "W4_implementations" in msg:
             return make_phase2(msg, paper_idx=state["idx"])
         # I1 score re-extraction — per-paper outcome to exercise the taxonomy:
         #   paper 0 (safe_rl):       re-extract agrees  -> I1 pass -> verified

@@ -4,7 +4,7 @@
     "node_id": "numerical_winrate",
     "name": "Reported Win Rate",
     "type": "numerical",
-    "level": "W4_concrete_solution",
+    "level": "W4_implementation",
     "context": "Our method achieves a win rate of 0.95 on the SMAC benchmark.",
     "provenance": {"score": 0.95, "score_std": 0.0}
   },

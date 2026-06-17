@@ -16,7 +16,6 @@ from ccchain.core.ontology import (
     STRONG_CAUSAL_EDGES,
     TYPE_COMPATIBILITY,
     TYPE_TO_COE_CHECKS,
-    TYPE_TO_LEVEL,
     TaskSpec,
 )
 
@@ -53,7 +52,6 @@ async def handle_call_tool(name: str, arguments: dict):
             "strong_causal_edges": list(STRONG_CAUSAL_EDGES),
             "levels": LEVELS,
             "level_aliases": LEVEL_ALIAS,
-            "type_to_level": TYPE_TO_LEVEL,
             "type_to_coe_checks": {k: sorted(v) for k, v in TYPE_TO_COE_CHECKS.items()},
             "type_compatibility": {
                 k: list(v) for k, v in TYPE_COMPATIBILITY.items()

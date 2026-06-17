@@ -32,22 +32,24 @@ STATUS_COLORS = {
 }
 
 LEVEL_LABEL = {
-    "W2_problem_analysis": "W2",
-    "W3_solution_direction": "W3",
-    "W4_concrete_solution": "W4",
-    "W5_code_implementation": "W5",
+    "W1_problem": "W1",
+    "W2_direction": "W2",
+    "W3_approach": "W3",
+    "W4_implementation": "W4",
+    "W5_code": "W5",
 }
-LEVEL_ORDER = {0: "W2_problem_analysis", 1: "W3_solution_direction",
-               2: "W4_concrete_solution", 3: "W5_code_implementation"}
+LEVEL_ORDER = {0: "W1_problem", 1: "W2_direction", 2: "W3_approach",
+               3: "W4_implementation", 4: "W5_code"}
 LEVEL_TO_INT = {v: k for k, v in LEVEL_ORDER.items()}
 _LEVELS = list(LEVEL_ORDER.values())
 
-# Level → border color + semantic role (specification hierarchy W2→W3→W4→W5)
+# Level → border color + semantic role (specification hierarchy W1→W5)
 LEVEL_BORDER = {
-    "W2_problem_analysis":   {"border": "#ef4444", "label": "W2 Problem"},
-    "W3_solution_direction": {"border": "#f59e0b", "label": "W3 Direction"},
-    "W4_concrete_solution":  {"border": "#3b82f6", "label": "W4 Solution"},
-    "W5_code_implementation":{"border": "#10b981", "label": "W5 Code"},
+    "W1_problem":        {"border": "#dc2626", "label": "W1 Problem"},
+    "W2_direction":      {"border": "#f59e0b", "label": "W2 Direction"},
+    "W3_approach":       {"border": "#a855f7", "label": "W3 Approach"},
+    "W4_implementation": {"border": "#3b82f6", "label": "W4 Implementation"},
+    "W5_code":           {"border": "#10b981", "label": "W5 Code"},
 }
 
 CHECK_LABELS = {
@@ -59,8 +61,8 @@ CHECK_LABELS = {
 
 # Node size by level (W2 largest → W5 smallest), reinforces the pyramid
 _LEVEL_SIZE = {
-    "W2_problem_analysis": 26, "W3_solution_direction": 18,
-    "W4_concrete_solution": 13, "W5_code_implementation": 9,
+    "W1_problem": 30, "W2_direction": 22, "W3_approach": 16,
+    "W4_implementation": 12, "W5_code": 9,
 }
 
 # Edge styling by relation

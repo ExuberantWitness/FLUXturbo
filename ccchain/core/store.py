@@ -13,9 +13,9 @@ import igraph as ig
 import numpy as np
 
 from ccchain.core.ontology import (
+    LEVEL_MIGRATION_V04_TO_V05,
     LEVEL_ORDER,
     TYPE_MIGRATION_V02_TO_V03,
-    TYPE_TO_LEVEL,
     Atom,
     Edge,
     Trajectory,
@@ -105,43 +105,39 @@ class CCStore:
             pass
         self.db.commit()
 
-        # v0.2 → v0.3 idempotent data migration (paper→citation, fact→concept, W4 method→solution)
-        self._migrate_v02_to_v03_types()
+        # v0.4 (4-layer) → v0.5 (5-layer) idempotent migration:
+        #   level-string rewrite + legacy type renames (paper→citation, fact→concept).
+        self._migrate_to_v05()
 
     # ------------------------------------------------------------------
-    # v0.2 → v0.3 type migration
+    # v0.4 → v0.5 migration (level strings + legacy type renames)
     # ------------------------------------------------------------------
-    def _migrate_v02_to_v03_types(self) -> int:
-        """Idempotent migration of legacy atom types to v0.3 12-type system.
+    def _migrate_to_v05(self) -> int:
+        """Idempotent migration to the v0.5 5-level, decoupled-type schema.
 
-        Rules:
-          - paper → citation (W3_solution_direction)
-          - fact → concept (W3_solution_direction)
-          - (method, W4_concrete_solution) → solution (level stays W4)
-          - any atom whose (type, level) violates TYPE_TO_LEVEL → force canonical level
+        - Legacy type renames: paper → citation, fact → concept (level unchanged).
+        - Level-string rewrite: old 4-layer keys → new 5-layer keys
+          (W2_problem_analysis→W1_problem, W3_solution_direction→W2_direction,
+          W4_concrete_solution→W4_implementation, W5_code_implementation→W5_code).
+        - W3_approach is a new tier (no legacy source).
 
+        v0.5 decouples type from level, so there is no type-level forcing.
         Returns: number of rows migrated. Safe to call repeatedly.
         """
         migrated = 0
-        # Pass 1: type renames (paper→citation, fact→concept)
+        # Pass 1: legacy type renames (paper→citation, fact→concept). Level untouched.
         for old_t, new_t in TYPE_MIGRATION_V02_TO_V03.items():
             cur = self.db.execute(
-                "UPDATE cc_nodes SET type = ?, level = ? WHERE type = ?",
-                (new_t, TYPE_TO_LEVEL[new_t], old_t),
+                "UPDATE cc_nodes SET type = ? WHERE type = ?",
+                (new_t, old_t),
             )
             migrated += cur.rowcount
 
-        # Pass 2: W4 method → solution
-        cur = self.db.execute(
-            "UPDATE cc_nodes SET type = 'solution' WHERE type = 'method' AND level = 'W4_concrete_solution'"
-        )
-        migrated += cur.rowcount
-
-        # Pass 3: force type-level consistency per TYPE_TO_LEVEL
-        for t, lvl in TYPE_TO_LEVEL.items():
+        # Pass 2: level-string rewrite (old 4-layer → new 5-layer).
+        for old_lvl, new_lvl in LEVEL_MIGRATION_V04_TO_V05.items():
             cur = self.db.execute(
-                "UPDATE cc_nodes SET level = ? WHERE type = ? AND level != ?",
-                (lvl, t, lvl),
+                "UPDATE cc_nodes SET level = ? WHERE level = ?",
+                (new_lvl, old_lvl),
             )
             migrated += cur.rowcount
 
@@ -301,13 +297,13 @@ class CCStore:
 
         if domain:
             w5_atoms = [
-                a for a in self.query_by_level("W5_code_implementation")
+                a for a in self.query_by_level("W5_code")
                 if not domain or any(
                     t == f"domain:{domain}" for t in (a.tags or [])
                 )
             ]
         else:
-            w5_atoms = self.query_by_level("W5_code_implementation")
+            w5_atoms = self.query_by_level("W5_code")
 
         trajectories: list[Trajectory] = []
         seen_w5: set[str] = set()
@@ -321,10 +317,11 @@ class CCStore:
                 continue
             w5_idx = self._node_index[w5.node_id]
 
-            # Trace upward level by level
-            w4_idx = self._best_ancestor(w5_idx, "W4_concrete_solution")
-            w3_idx = self._best_ancestor(w4_idx, "W3_solution_direction") if w4_idx >= 0 else -1
-            w2_idx = self._best_ancestor(w3_idx, "W2_problem_analysis") if w3_idx >= 0 else -1
+            # Trace upward level by level (W5 → W4 → W3 → W2 → W1)
+            w4_idx = self._best_ancestor(w5_idx, "W4_implementation")
+            w3_idx = self._best_ancestor(w4_idx, "W3_approach") if w4_idx >= 0 else -1
+            w2_idx = self._best_ancestor(w3_idx, "W2_direction") if w3_idx >= 0 else -1
+            w1_idx = self._best_ancestor(w2_idx, "W1_problem") if w2_idx >= 0 else -1
 
             traj = Trajectory(source_pdf=w5.source_pdf or "")
             traj.W5_code.append(w5)
@@ -336,11 +333,15 @@ class CCStore:
             if w3_idx >= 0:
                 w3 = self.query_by_id(self.graph.vs[w3_idx]["name"])
                 if w3:
-                    traj.W3_solutions.append(w3)
+                    traj.W3_approach.append(w3)
             if w2_idx >= 0:
                 w2 = self.query_by_id(self.graph.vs[w2_idx]["name"])
                 if w2:
-                    traj.W2_problem = w2
+                    traj.W2_direction.append(w2)
+            if w1_idx >= 0:
+                w1 = self.query_by_id(self.graph.vs[w1_idx]["name"])
+                if w1:
+                    traj.W1_problem = w1
 
             trajectories.append(traj)
 

@@ -15,12 +15,12 @@ def _make_test_graph() -> ig.Graph:
     """Build a small test graph with W2-W5 levels."""
     g = ig.Graph(directed=True)
     g.add_vertices(6)
-    g.vs[0].update_attributes(name="w2", label="Problem", type="bottleneck", level="W2_problem_analysis")
-    g.vs[1].update_attributes(name="w3a", label="Direction A", type="method", level="W3_solution_direction")
-    g.vs[2].update_attributes(name="w3b", label="Direction B", type="method", level="W3_solution_direction")
-    g.vs[3].update_attributes(name="w4a", label="Solution A1", type="method", level="W4_concrete_solution")
-    g.vs[4].update_attributes(name="w4b", label="Solution B1", type="method", level="W4_concrete_solution")
-    g.vs[5].update_attributes(name="w5a", label="Code A1", type="component", level="W5_code_implementation")
+    g.vs[0].update_attributes(name="w2", label="Problem", type="bottleneck", level="W1_problem")
+    g.vs[1].update_attributes(name="w3a", label="Direction A", type="method", level="W2_direction")
+    g.vs[2].update_attributes(name="w3b", label="Direction B", type="method", level="W2_direction")
+    g.vs[3].update_attributes(name="w4a", label="Solution A1", type="method", level="W4_implementation")
+    g.vs[4].update_attributes(name="w4b", label="Solution B1", type="method", level="W4_implementation")
+    g.vs[5].update_attributes(name="w5a", label="Code A1", type="component", level="W5_code")
 
     g.add_edges(
         [(0, 1), (0, 2)],  # W2 → W3
@@ -56,7 +56,7 @@ def test_ppr_basic():
 
 def test_connected_components_by_level():
     g = _make_test_graph()
-    comps = connected_components_by_level(g, "W3_solution_direction")
+    comps = connected_components_by_level(g, "W2_direction")
     assert len(comps) > 0
 
 

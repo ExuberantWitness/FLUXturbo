@@ -1,18 +1,34 @@
 {
-  "W2_problem_analysis": {
+  "W1_problem": {
     "name": "Credit Assignment Noise in CTDE",
-    "context": "Centralized Training with Decentralized Execution (CTDE) suffers from high-variance policy gradients due to noisy credit assignment, where individual agents cannot distinguish their contribution from team reward."
+    "type": "bottleneck",
+    "context": "Centralized Training with Decentralized Execution (CTDE) suffers from high-variance policy gradients due to noisy credit assignment."
   },
-  "W3_solution_directions": [
+  "W2_directions": [
     {
       "name": "Optimal Transport Credit Assignment",
-      "context": "Use optimal transport to align agent contributions with reward signals, providing a principled way to distribute credit.",
-      "compares_to": ["Shapley Value Credit Assignment", "Attention-based Credit Assignment"]
+      "type": "method",
+      "context": "Use optimal transport to align agent contributions with reward signals.",
+      "compares_to": ["Shapley Value Credit Assignment"],
+      "W3_approaches": [
+        {
+          "name": "Sinkhorn-based OT Credit",
+          "type": "method",
+          "context": "Entropy-regularized OT via Sinkhorn iterations for credit assignment."
+        }
+      ]
     },
     {
       "name": "Shapley Value Credit Assignment",
-      "context": "Use Shapley values from cooperative game theory to quantify each agent's marginal contribution.",
-      "compares_to": ["Optimal Transport Credit Assignment"]
+      "type": "method",
+      "context": "Use Shapley values from cooperative game theory to quantify marginal contribution.",
+      "W3_approaches": [
+        {
+          "name": "Monte Carlo Shapley",
+          "type": "method",
+          "context": "Approximate Shapley via Monte Carlo sampling over coalitions."
+        }
+      ]
     }
   ]
 }

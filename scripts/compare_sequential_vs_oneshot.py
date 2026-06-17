@@ -36,8 +36,8 @@ from ccchain.core.store import CCStore
 PDF_DIR = r"E:\DATA\vscode\ARIS\pdf"
 SHARED_W2 = "Reinforcement Learning Challenges"
 
-_LEVELS = ["W2_problem_analysis", "W3_solution_direction",
-           "W4_concrete_solution", "W5_code_implementation"]
+_LEVELS = ["W1_problem", "W2_direction",
+           "W4_implementation", "W5_code"]
 
 
 # ---------------------------------------------------------------------------
@@ -90,10 +90,10 @@ _TOPIC_W3 = {
 def phase1(text):
     tos = topics_in(text)
     return {
-        "W2_problem_analysis": {
+        "W1_problem": {
             "name": SHARED_W2, "type": "bottleneck", "context": _SHARED_W2_CTX,
         },
-        "W3_solution_directions": [
+        "W2_directions": [
             {"name": _TOPIC_W3[t][0], "type": "method", "context": _TOPIC_W3[t][1],
              "provenance": {"code_span": "sec 3"}}
             for t in tos
@@ -110,12 +110,12 @@ def phase2(text):
             "context": f"{t} achieves 0.92 normalized score.",
             "provenance": {"score": 0.92, "score_std": 0.01},
             "parent_W3_id": _TOPIC_W3[t][0], "extends": [], "improves": [],
-            "W5_implementations": [
+            "W5_code": [
                 {"name": f"{t} exp", "type": "experiment", "context": f"{t} training loop.",
                  "code_ref": "t", "code_body": "x=1", "provenance": {"code_span": "1-40"}},
             ],
         })
-    return {"W4_concrete_solutions": solutions}
+    return {"W4_implementations": solutions}
 
 
 # ---------------------------------------------------------------------------
@@ -142,9 +142,9 @@ def semantic_embed():
 def make_chat_json():
     def _fn(messages, **kwargs):
         msg = messages[0]["content"] if messages else ""
-        if "W2_problem_analysis" in msg:
+        if "W1_problem" in msg:
             return phase1(msg)
-        if "W4_concrete_solutions" in msg:
+        if "W4_implementations" in msg:
             return phase2(msg)
         if "score" in msg.lower() and "extract" in msg.lower():
             return {"score": 0.92}
@@ -232,7 +232,7 @@ def _run_mode(papers, mode, tag):
     merged = sum(1 for l in _LEVELS for a in store.query_by_level(l, status=None)
                  if a.status == "merged")
     live = total - merged
-    w2_atoms = store.query_by_level("W2_problem_analysis", status=None)
+    w2_atoms = store.query_by_level("W1_problem", status=None)
     w2_live = [a for a in w2_atoms if a.status != "merged"]
     w2_merged = [a for a in w2_atoms if a.status == "merged"]
 

@@ -71,13 +71,13 @@ def _two_papers_ot_under_same_parent(store):
     """Insert two W3 'OT method' atoms under a shared W2 parent, both with OT
     embeddings (so cosine ~1). Returns (w2_id, w3_a_id, w3_b_id)."""
     w2 = Atom(node_id="w2_root", name="RL Problem", type="bottleneck",
-              level="W2_problem_analysis", context="credit assignment noise",
+              level="W1_problem", context="credit assignment noise",
               provenance={})
     w3a = Atom(node_id="w3_a", name="OT Method A", type="method",
-               level="W3_solution_direction", context="OT credit [emb:OT]",
+               level="W2_direction", context="OT credit [emb:OT]",
                provenance={"code_span": "s"})
     w3b = Atom(node_id="w3_b", name="OT Method B", type="method",
-               level="W3_solution_direction", context="optimal transport credit [emb:OT]",
+               level="W2_direction", context="optimal transport credit [emb:OT]",
                provenance={"code_span": "s"})
     edges = [
         Edge(src="w2_root", relation="decomposes_into", tgt="w3_a"),
@@ -111,7 +111,7 @@ def test_candidate_clusters_groups_similar():
         np.array([0.99, 0.01, 0], dtype=np.float32),  # ~1 with n0
         np.array([0, 1, 0], dtype=np.float32),         # distinct
     ])}
-    atoms = [Atom(node_id=k, name=k, type="method", level="W3_solution_direction")
+    atoms = [Atom(node_id=k, name=k, type="method", level="W2_direction")
              for k in v]
     clusters = _candidate_clusters(atoms, v, 0.85)
     assert len(clusters) == 1
@@ -121,7 +121,7 @@ def test_candidate_clusters_groups_similar():
 def test_candidate_clusters_singletons_dropped():
     v = {"n0": np.array([1, 0], dtype=np.float32),
          "n1": np.array([0, 1], dtype=np.float32)}
-    atoms = [Atom(node_id=k, name=k, type="method", level="W3_solution_direction")
+    atoms = [Atom(node_id=k, name=k, type="method", level="W2_direction")
              for k in v]
     assert _candidate_clusters(atoms, v, 0.85) == []
 
@@ -157,7 +157,7 @@ def test_consolidate_merges_duplicates(mock_majority, mock_embed, store):
     assert b.status == "merged"
     assert b.provenance["merged_into"] == "w3_a"
     # only one live W3 remains
-    live_w3 = [x for x in store.query_by_level("W3_solution_direction", status=None)
+    live_w3 = [x for x in store.query_by_level("W2_direction", status=None)
                if x.status != "merged"]
     assert len(live_w3) == 1
 
@@ -184,13 +184,13 @@ def test_parent_grouping_prevents_cross_branch_merge(mock_majority, mock_embed, 
     mock_majority.side_effect = _arbiter_factory(merge=True)
 
     w2a = Atom(node_id="w2_a", name="Problem A", type="bottleneck",
-               level="W2_problem_analysis", context="pa", provenance={})
+               level="W1_problem", context="pa", provenance={})
     w2b = Atom(node_id="w2_b", name="Problem B", type="bottleneck",
-               level="W2_problem_analysis", context="pb", provenance={})
+               level="W1_problem", context="pb", provenance={})
     w3a = Atom(node_id="w3_x", name="OT A", type="method",
-               level="W3_solution_direction", context="OT [emb:OT]", provenance={})
+               level="W2_direction", context="OT [emb:OT]", provenance={})
     w3b = Atom(node_id="w3_y", name="OT B", type="method",
-               level="W3_solution_direction", context="OT [emb:OT]", provenance={})
+               level="W2_direction", context="OT [emb:OT]", provenance={})
     edges = [
         Edge(src="w2_a", relation="decomposes_into", tgt="w3_x"),
         Edge(src="w3_x", relation="aggregates_to", tgt="w2_a"),
@@ -234,7 +234,7 @@ def test_consolidate_rewires_child_edges(mock_majority, mock_embed, store):
     _two_papers_ot_under_same_parent(store)
     # add a W4 child of w3_b
     w4 = Atom(node_id="w4_child", name="Sinkhorn", type="solution",
-              level="W4_concrete_solution", context="sinkhorn impl", provenance={})
+              level="W4_implementation", context="sinkhorn impl", provenance={})
     store.insert_blueprint([w4], [Edge(src="w3_b", relation="decomposes_into", tgt="w4_child")], "p.pdf")
 
     consolidate(store, config=Config(consolidate_similarity_threshold=0.85, consolidate_majority_k=1))

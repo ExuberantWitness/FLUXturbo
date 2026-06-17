@@ -1,5 +1,5 @@
 {
-  "W4_concrete_solutions": [
+  "W4_implementations": [
     {
       "name": "Sinkhorn-based OT Credit Assignment",
       "context": "Uses Sinkhorn algorithm with entropy regularization (lambda=0.1) to efficiently compute optimal transport between agent action distributions and reward signals.",
@@ -18,7 +18,7 @@
         "tradeoff": "Requires well-defined cost metric between agents and rewards",
         "confidence": 0.8
       },
-      "W5_implementations": [
+      "W5_code": [
         {
           "name": "sinkhorn_credit_assignment",
           "context": "Computes Sinkhorn distance between agent Q-values and reward, uses gradient as credit signal.",
@@ -43,7 +43,7 @@
         "tradeoff": "Introduces estimation variance proportional to 1/sqrt(m)",
         "confidence": 0.9
       },
-      "W5_implementations": [
+      "W5_code": [
         {
           "name": "mc_shapley_credit",
           "context": "Samples random agent permutations to estimate Shapley values, computes marginal contribution for each.",

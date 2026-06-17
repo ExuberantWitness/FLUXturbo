@@ -1,4 +1,4 @@
-"""7-layer validation rules — pure functions, no LLM dependency.
+"""6-layer validation rules — pure functions, no LLM dependency.
 
 R1 Schema: type/level/relation in legal sets, edge endpoints exist.
 R2 Type Compatibility: edge endpoints in TYPE_COMPATIBILITY matrix.
@@ -6,7 +6,8 @@ R3 Rho Completeness: strong-causal edges must carry rho evidence.
 R4 Level Consistency: hierarchy edges must cross levels correctly.
 R5 Dedup Detection: same name + type + level → duplicate suggestion.
 R6 Provenance Presence: numerical/citation/method/solution/experiment must have provenance.
-R7 Type-Level Consistency: atom.type must map to atom.level via TYPE_TO_LEVEL.
+
+v0.5: R7 (type-level 1:1 consistency) removed — type and level are decoupled.
 """
 
 from __future__ import annotations
@@ -18,7 +19,6 @@ from ccchain.core.ontology import (
     LEVEL_ORDER,
     STRONG_CAUSAL_EDGES,
     TYPE_COMPATIBILITY,
-    TYPE_TO_LEVEL,
     Atom,
     Edge,
 )
@@ -43,7 +43,7 @@ TYPE_DEMOTION_MAP: dict[str, str] = {
 
 
 def validate(atoms: list[Atom], edges: list[Edge]) -> list[dict]:
-    """Run all 7 validation layers. Returns list of error dicts (empty = pass)."""
+    """Run all 6 validation layers. Returns list of error dicts (empty = pass)."""
     errors: list[dict] = []
     atom_ids: set[str] = {a.node_id for a in atoms}
 
@@ -57,12 +57,6 @@ def validate(atoms: list[Atom], edges: list[Edge]) -> list[dict]:
         if atom.level not in LEVEL_ORDER:
             errors.append(_err("R1", atom.node_id, f"Invalid level: {atom.level!r}"))
             continue
-
-        # Rule 7 — Type-Level Consistency
-        expected_level = TYPE_TO_LEVEL.get(atom.type)
-        if expected_level is not None and atom.level != expected_level:
-            errors.append(_err("R7", atom.node_id,
-                f"Type {atom.type!r} requires level {expected_level!r}, got {atom.level!r}"))
 
         # Rule 6 — Provenance Presence (by type)
         if atom.type in PROVENANCE_REQUIREMENTS:
@@ -147,11 +141,10 @@ def apply_r6_demotions(atoms: list[Atom]) -> int:
         if ok:
             continue
 
-        # R6 still failing — apply demotion
+        # R6 still failing — apply demotion (type changes; level is decoupled, stays)
         if atom.type in TYPE_DEMOTION_MAP:
             new_type = TYPE_DEMOTION_MAP[atom.type]
             atom.type = new_type
-            atom.level = TYPE_TO_LEVEL[new_type]
             atom.status = "demoted"
             count += 1
         else:

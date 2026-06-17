@@ -63,11 +63,11 @@ class NoveltyEvaluator(Evaluator):
             level_dists = {}
             total = 0.0
 
-            for lvl in ["W2", "W3", "W4", "W5"]:
+            for lvl in ["W1", "W2", "W3", "W4", "W5"]:
                 d = _hausdorff(proposal_embs.get(lvl, np.empty((0, 1024))),
                                traj_embs.get(lvl, np.empty((0, 1024))))
                 level_dists[lvl] = float(d)
-                total += d * self.hausdorff_weights.get(lvl, 0.25)
+                total += d * self.hausdorff_weights.get(lvl, 0.2)
 
             if total < best_distance:
                 best_distance = total
@@ -94,13 +94,15 @@ class NoveltyEvaluator(Evaluator):
     ) -> Trajectory:
         traj = Trajectory()
         for a in atoms:
-            if a.level == "W2_problem_analysis":
-                traj.W2_problem = a
-            elif a.level == "W3_solution_direction":
-                traj.W3_solutions.append(a)
-            elif a.level == "W4_concrete_solution":
+            if a.level == "W1_problem":
+                traj.W1_problem = a
+            elif a.level == "W2_direction":
+                traj.W2_direction.append(a)
+            elif a.level == "W3_approach":
+                traj.W3_approach.append(a)
+            elif a.level == "W4_implementation":
                 traj.W4_implementations.append(a)
-            elif a.level == "W5_code_implementation":
+            elif a.level == "W5_code":
                 traj.W5_code.append(a)
         traj.edges = list(edges)
         return traj
@@ -121,12 +123,15 @@ class NoveltyEvaluator(Evaluator):
             }
 
         prompt = _RUBRIC_PROMPT.format(
-            proposal_w2=proposal.W2_problem.context if proposal.W2_problem else "N/A",
-            proposal_w3="; ".join(a.context for a in proposal.W3_solutions),
+            proposal_w1=proposal.W1_problem.context if proposal.W1_problem else "N/A",
+            proposal_w2="; ".join(a.context for a in proposal.W2_direction),
+            proposal_w3="; ".join(a.context for a in proposal.W3_approach),
             proposal_w4="; ".join(a.context for a in proposal.W4_implementations),
-            nearest_w2=nearest.W2_problem.context if nearest.W2_problem else "N/A",
-            nearest_w3="; ".join(a.context for a in nearest.W3_solutions),
+            nearest_w1=nearest.W1_problem.context if nearest.W1_problem else "N/A",
+            nearest_w2="; ".join(a.context for a in nearest.W2_direction),
+            nearest_w3="; ".join(a.context for a in nearest.W3_approach),
             nearest_w4="; ".join(a.context for a in nearest.W4_implementations),
+            w1_dist=f"{level_dists.get('W1', 0):.4f}",
             w2_dist=f"{level_dists.get('W2', 0):.4f}",
             w3_dist=f"{level_dists.get('W3', 0):.4f}",
             w4_dist=f"{level_dists.get('W4', 0):.4f}",
@@ -166,16 +171,19 @@ _RUBRIC_PROMPT = """\
 You are a research novelty evaluator. Compare a proposal against the nearest existing trajectory.
 
 PROPOSAL:
-  W2 (Problem): {proposal_w2}
-  W3 (Directions): {proposal_w3}
-  W4 (Solutions): {proposal_w4}
+  W1 (Problem): {proposal_w1}
+  W2 (Direction): {proposal_w2}
+  W3 (Approach): {proposal_w3}
+  W4 (Implementation): {proposal_w4}
 
 NEAREST EXISTING TRAJECTORY:
-  W2 (Problem): {nearest_w2}
-  W3 (Directions): {nearest_w3}
-  W4 (Solutions): {nearest_w4}
+  W1 (Problem): {nearest_w1}
+  W2 (Direction): {nearest_w2}
+  W3 (Approach): {nearest_w3}
+  W4 (Implementation): {nearest_w4}
 
 LAYERED HAUSDORFF DISTANCES (cosine):
+  W1: {w1_dist}
   W2: {w2_dist}
   W3: {w3_dist}
   W4: {w4_dist}
@@ -183,7 +191,8 @@ LAYERED HAUSDORFF DISTANCES (cosine):
 
 Analyze divergence points across these dimensions:
 - problem_formulation (is the problem framed differently?)
-- solution_approach (are the methods fundamentally different?)
+- direction (are the research directions different?)
+- approach (is the core idea/思路 fundamentally different?)
 - technical_mechanism (are the core mechanisms novel?)
 - evaluation_perspective (does it enable new types of evaluation?)
 
@@ -192,7 +201,8 @@ Return JSON:
   "divergence_points": ["specific point 1", "specific point 2"],
   "dimension_scores": {{
     "problem_formulation": 0.7,
-    "solution_approach": 0.8,
+    "direction": 0.6,
+    "approach": 0.8,
     "technical_mechanism": 0.6,
     "evaluation_perspective": 0.5
   }},

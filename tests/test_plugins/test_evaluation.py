@@ -56,21 +56,21 @@ def test_evaluate_with_existing_trajectories(mock_chat):
     # Build proposal atoms
     proposal_atoms = [
         Atom(node_id="p_w2", name="Proposal Problem", type="bottleneck",
-             level="W2_problem_analysis", context="Test problem",
+             level="W1_problem", context="Test problem",
              embedding=np.random.randn(1024).astype(np.float32)),
         Atom(node_id="p_w3", name="Proposal Direction", type="method",
-             level="W3_solution_direction", context="Test direction",
+             level="W2_direction", context="Test direction",
              embedding=np.random.randn(1024).astype(np.float32)),
     ]
     proposal_edges: list[Edge] = []
 
     # Build existing trajectory
     existing = Trajectory(
-        W2_problem=Atom(node_id="e_w2", name="Existing Problem", type="bottleneck",
-                        level="W2_problem_analysis", context="Old problem",
+        W1_problem=Atom(node_id="e_w1", name="Existing Problem", type="bottleneck",
+                        level="W1_problem", context="Old problem",
                         embedding=np.random.randn(1024).astype(np.float32)),
-        W3_solutions=[Atom(node_id="e_w3", name="Existing Direction", type="method",
-                           level="W3_solution_direction", context="Old direction",
+        W2_direction=[Atom(node_id="e_w2", name="Existing Direction", type="method",
+                           level="W2_direction", context="Old direction",
                            embedding=np.random.randn(1024).astype(np.float32))],
         source_pdf="old_paper.pdf",
     )

@@ -4,7 +4,7 @@
     "node_id": "method_ot_credit",
     "name": "OT Credit Assignment Method",
     "type": "method",
-    "level": "W3_solution_direction",
+    "level": "W2_direction",
     "context": "Assigns credit via optimal transport distances between agent action distributions and reward signals.",
     "provenance": {"code_span": "section 3.2"}
   },
@@ -12,7 +12,7 @@
     "node_id": "component_shapley_impl",
     "name": "Shapley Sampler Implementation",
     "type": "component",
-    "level": "W5_code_implementation",
+    "level": "W5_code",
     "context": "Samples agent permutations to estimate Shapley values.",
     "code_body": "def shapley_credit(agents, value_fn, n_samples=1000):\n    perms = [random.sample(agents, len(agents)) for _ in range(n_samples)]\n    marginal = {a: 0 for a in agents}\n    for p in perms:\n        prev = value_fn([])\n        for a in p:\n            cur = value_fn(p[:p.index(a)+1])\n            marginal[a] += cur - prev\n            prev = cur\n    return {a: m/n_samples for a, m in marginal.items()}"
   },

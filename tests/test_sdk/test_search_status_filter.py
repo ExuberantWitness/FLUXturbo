@@ -60,26 +60,30 @@ _PAPER_TEXT = (
 )
 
 _PHASE1 = {
-    "W2_problem_analysis": {
+    "W1_problem": {
         "name": "Credit Noise", "type": "bottleneck",
         "context": "CTDE credit assignment is noisy.",
     },
-    "W3_solution_directions": [
-        {"name": "OT Method", "type": "method", "context": "OT credit assignment.",
-         "provenance": {"code_span": "sec 3"}},
-        {"name": "Cuturi Ref", "type": "citation", "context": "Cuturi 2013.",
-         "provenance": {"raw_citation": "Smith et al., definitely fake, 2099"}},
+    "W2_directions": [
+        {"name": "OT Direction", "type": "method", "context": "OT-based credit assignment.",
+         "provenance": {"code_span": "sec 3"},
+         "W3_approaches": [
+             {"name": "OT Method", "type": "method", "context": "OT credit assignment.",
+              "provenance": {"code_span": "sec 3"}},
+             {"name": "Cuturi Ref", "type": "citation", "context": "Cuturi 2013.",
+              "provenance": {"raw_citation": "Smith et al., definitely fake, 2099"}},
+         ]},
     ],
 }
 
 _PHASE2 = {
-    "W4_concrete_solutions": [{
+    "W4_implementations": [{
         "name": "Sinkhorn Win Rate", "type": "numerical",
         "context": "Win rate 0.95 on SMAC.",
         "provenance": {"score": 0.95, "score_std": 0.0},
         "parent_W3_id": "OT Method",
         "extends": [], "improves": [],
-        "W5_implementations": [
+        "W5_code": [
             {"name": "train_exp", "type": "experiment", "context": "Training loop.",
              "code_ref": "train", "code_body": "critic = CentralisedCritic()",
              "provenance": {"code_span": "1-40"}},
@@ -106,9 +110,9 @@ def _mock_embed():
 def _mock_chat_json():
     def _fn(messages, **kwargs):
         msg = messages[0]["content"] if messages else ""
-        if "W2_problem_analysis" in msg:
+        if "W1_problem" in msg:
             return _PHASE1
-        if "W4_concrete_solutions" in msg:
+        if "W4_implementations" in msg:
             return _PHASE2
         if "score" in msg.lower() and "extract" in msg.lower():
             return {"score": 0.95}

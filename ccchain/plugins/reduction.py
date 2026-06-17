@@ -12,17 +12,14 @@ import uuid
 import igraph as ig
 
 from ccchain.core.graph import connected_components_by_level
-from ccchain.core.ontology import LEVEL_ORDER, TYPE_TO_LEVEL, Atom, Edge
+from ccchain.core.ontology import (
+    ATOM_TYPE_SET,
+    LEVEL_DEFAULT_TYPE,
+    LEVEL_ORDER,
+    Atom,
+    Edge,
+)
 from ccchain.plugins.base import Reducer
-
-
-# Default type per level when LLM doesn't specify or specifies invalid type.
-LEVEL_DEFAULT_TYPE: dict[str, str] = {
-    "W2_problem_analysis": "problem",
-    "W3_solution_direction": "method",
-    "W4_concrete_solution": "solution",
-    "W5_code_implementation": "component",
-}
 
 
 class HierarchicalReducer(Reducer):
@@ -103,9 +100,10 @@ class HierarchicalReducer(Reducer):
         for item in response.get("reduced_atoms", []):
             atom_id = f"REDUCED_{to_level}_{uuid.uuid4().hex[:8]}"
 
-            # Validate LLM-chosen type against TYPE_TO_LEVEL; fall back to level default.
+            # v0.5: type is decoupled from level — just validate against the
+            # 12-type vocab; fall back to the level's default type if invalid.
             raw_type = item.get("type") or LEVEL_DEFAULT_TYPE.get(to_level, "method")
-            if TYPE_TO_LEVEL.get(raw_type) != to_level:
+            if raw_type not in ATOM_TYPE_SET:
                 raw_type = LEVEL_DEFAULT_TYPE.get(to_level, raw_type)
 
             # Carry over source_refs and code_body from dominant source atom; stamp reduced_from.
@@ -145,11 +143,10 @@ Source atoms:
 Synthesize these into higher-level {to_level} abstractions. Each reduced atom should
 capture the shared essence while noting variations.
 
-Choose the type from the {to_level} layer's allowed types only:
-- W2_problem_analysis: ["problem", "bottleneck", "hypothesis"]
-- W3_solution_direction: ["method", "citation", "concept"]
-- W4_concrete_solution: ["solution", "numerical", "conclusion"]
-- W5_code_implementation: ["component", "experiment", "verification"]
+The reduced atom's level is {to_level}. Pick its type from the 12-type vocabulary
+(type is decoupled from level — any type fits any level):
+  problem, bottleneck, hypothesis, method, citation, concept,
+  solution, numerical, conclusion, component, experiment, verification
 
 Return JSON:
 {{

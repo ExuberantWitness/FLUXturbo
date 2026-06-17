@@ -20,9 +20,9 @@ def _load_fixture(name):
 def _make_w5_atoms() -> list[Atom]:
     return [
         Atom(node_id="w5_1", name="sinkhorn_credit", type="component",
-             level="W5_code_implementation", context="Sinkhorn OT credit assignment"),
+             level="W5_code", context="Sinkhorn OT credit assignment"),
         Atom(node_id="w5_2", name="wasserstein_credit", type="component",
-             level="W5_code_implementation", context="Wasserstein-1 credit assignment"),
+             level="W5_code", context="Wasserstein-1 credit assignment"),
     ]
 
 
@@ -49,13 +49,13 @@ def test_reduce_w5_to_w4(mock_chat):
     result = reducer.reduce_level(
         atoms=atoms,
         edges=[],
-        from_level="W5_code_implementation",
-        to_level="W4_concrete_solution",
+        from_level="W5_code",
+        to_level="W4_implementation",
         graph=graph,
     )
 
     assert len(result) >= 1
-    assert result[0].level == "W4_concrete_solution"
+    assert result[0].level == "W4_implementation"
     assert len(result[0].context) > 0
 
 
@@ -71,8 +71,8 @@ def test_reduce_empty_component():
     result = reducer.reduce_level(
         atoms=[],
         edges=[],
-        from_level="W5_code_implementation",
-        to_level="W4_concrete_solution",
+        from_level="W5_code",
+        to_level="W4_implementation",
         graph=graph,
     )
     assert result == []

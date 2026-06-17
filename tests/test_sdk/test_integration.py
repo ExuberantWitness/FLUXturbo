@@ -110,8 +110,8 @@ def _make_llm_response_w2w3(paper_text: str) -> dict:
         ]
 
     return {
-        "W2_problem_analysis": {"name": name, "context": context},
-        "W3_solution_directions": directions,
+        "W1_problem": {"name": name, "context": context, "type": "bottleneck"},
+        "W2_directions": directions,
     }
 
 
@@ -129,7 +129,7 @@ def _make_llm_response_w4w5(paper_text: str, w3_atoms: list) -> dict:
             "improves": ["Independent Critic Ensembles"],
             "extends_rho": {"bottleneck": "overestimation_bias", "mechanism": "Joint covariance modeling reduces over-conservatism", "tradeoff": "Requires Cholesky decomposition per update", "confidence": 0.85},
             "improves_rho": {"bottleneck": "sample_inefficiency", "mechanism": "Adaptive conservatism reduction improves exploration", "tradeoff": "Additional hyperparameter for priority ordering", "confidence": 0.8},
-            "W5_implementations": [
+            "W5_code": [
                 {"name": "COP_Q_critic_update", "context": "Computes Cholesky-ordered projection for TD target with joint covariance.", "code_ref": "copq_critic_update"},
                 {"name": "COP_Actor_optimize", "context": "Actor optimization using COP-Q value estimates.", "code_ref": "copq_actor_loss"},
             ],
@@ -143,7 +143,7 @@ def _make_llm_response_w4w5(paper_text: str, w3_atoms: list) -> dict:
             "improves": ["Pure RL Policy Inversion"],
             "extends_rho": {"bottleneck": "representational_limitation", "mechanism": "Symbolic operators provide interpretable task structure", "tradeoff": "Predicate design requires domain knowledge", "confidence": 0.75},
             "improves_rho": {"bottleneck": "sample_inefficiency", "mechanism": "Symbolic planning reduces RL exploration space", "tradeoff": "Residual learning may still require significant samples", "confidence": 0.7},
-            "W5_implementations": [
+            "W5_code": [
                 {"name": "extract_strips_operators", "context": "Extracts preconditions, add/delete effects from demonstrations via geometric predicates.", "code_ref": "extract_strips_ops"},
                 {"name": "residual_sac_policy", "context": "SAC policy for residual predicate satisfaction after symbolic planning.", "code_ref": "ResidualSAC"},
             ],
@@ -157,14 +157,14 @@ def _make_llm_response_w4w5(paper_text: str, w3_atoms: list) -> dict:
             "improves": ["Point-wise Regression"],
             "extends_rho": {"bottleneck": "representational_limitation", "mechanism": "VQ provides discrete latent space for emotion dynamics", "tradeoff": "Codebook size limits expressiveness", "confidence": 0.8},
             "improves_rho": {"bottleneck": "generalization_gap", "mechanism": "Masked modeling captures global temporal dependencies", "tradeoff": "Increased training complexity", "confidence": 0.75},
-            "W5_implementations": [
+            "W5_code": [
                 {"name": "vq_encoder", "context": "Vector-quantized encoder mapping EEG to discrete emotion latent codes.", "code_ref": "VQEncoder"},
                 {"name": "masked_temporal_model", "context": "Masked modeling over temporal EEG sequences for emotion prediction.", "code_ref": "MaskedTemporalModel"},
                 {"name": "rl_trajectory_optimizer", "context": "RL-based optimization of emotion trajectory in latent space.", "code_ref": "RLTrajectoryOptimizer"},
             ],
         }]
 
-    return {"W4_concrete_solutions": solutions}
+    return {"W4_implementations": solutions}
 
 
 # ---------------------------------------------------------------------------
@@ -207,13 +207,13 @@ class TestFullPipeline:
             atoms, edges = extractor._parse_phase1(response, paper["filename"])
 
             # Verify W2
-            w2_atoms = [a for a in atoms if a.level == "W2_problem_analysis"]
+            w2_atoms = [a for a in atoms if a.level == "W1_problem"]
             assert len(w2_atoms) == 1, f"No W2 for {paper['filename']}"
             assert w2_atoms[0].type == "bottleneck"
             assert len(w2_atoms[0].context) > 20
 
             # Verify W3
-            w3_atoms = [a for a in atoms if a.level == "W3_solution_direction"]
+            w3_atoms = [a for a in atoms if a.level == "W2_direction"]
             assert len(w3_atoms) >= 1, f"No W3 for {paper['filename']}"
             assert all(a.type == "method" for a in w3_atoms)
 
@@ -238,8 +238,8 @@ class TestFullPipeline:
             response = _make_llm_response_w4w5(combined, [])
             atoms, edges = extractor._parse_phase2(response, paper["filename"])
 
-            w4_atoms = [a for a in atoms if a.level == "W4_concrete_solution"]
-            w5_atoms = [a for a in atoms if a.level == "W5_code_implementation"]
+            w4_atoms = [a for a in atoms if a.level == "W4_implementation"]
+            w5_atoms = [a for a in atoms if a.level == "W5_code"]
 
             assert len(w4_atoms) >= 1, f"No W4 for {paper['filename']}"
             assert len(w5_atoms) >= 1, f"No W5 for {paper['filename']}"
@@ -272,14 +272,14 @@ class TestFullPipeline:
             call_count[0] += 1
             msg = messages[0]["content"] if messages else ""
             # Determine which paper by matching text content
-            if "W2_problem_analysis" in msg:
+            if "W1_problem" in msg:
                 # Phase 1 call — return first paper's response
                 for paper in papers:
                     combined = "\n\n".join(paper["chunks"][:2])
                     if combined[:100] in msg:
                         return phase1_responses[paper["filename"]]
                 return phase1_responses[papers[0]["filename"]]
-            elif "W4_concrete_solutions" in msg:
+            elif "W4_implementations" in msg:
                 for paper in papers:
                     combined = "\n\n".join(paper["chunks"][:3])
                     if combined[:100] in msg:
@@ -329,7 +329,7 @@ class TestFullPipeline:
         assert total_edges >= 6  # At least W2→W3→W4→W5 edges
 
         # Verify store contents
-        all_levels = self.store.query_by_level("W4_concrete_solution")
+        all_levels = self.store.query_by_level("W4_implementation")
         assert len(all_levels) >= 3, f"Expected >= 3 W4 atoms, got {len(all_levels)}"
 
         # Verify graph integrity
@@ -360,14 +360,14 @@ class TestFullPipeline:
         def mock_fn(messages, **kwargs):
             msg = messages[0]["content"] if messages else ""
 
-            if "W2_problem_analysis" in msg:
+            if "W1_problem" in msg:
                 for paper in papers:
                     combined = "\n\n".join(paper["chunks"][:2])
                     if combined[:100] in msg:
                         return _make_llm_response_w2w3(combined)
                 return _make_llm_response_w2w3("\n\n".join(papers[0]["chunks"][:2]))
 
-            if "W4_concrete_solutions" in msg:
+            if "W4_implementations" in msg:
                 for paper in papers:
                     combined = "\n\n".join(paper["chunks"][:3])
                     if combined[:100] in msg:
@@ -400,8 +400,8 @@ class TestFullPipeline:
             # Reduce W5→W4
             w4_atoms = reducer.reduce_level(
                 atoms, edges,
-                from_level="W5_code_implementation",
-                to_level="W4_concrete_solution",
+                from_level="W5_code",
+                to_level="W4_implementation",
                 graph=self.store.graph,
             )
 
@@ -438,13 +438,13 @@ class TestFullPipeline:
 
         def mock_fn(messages, **kwargs):
             msg = messages[0]["content"] if messages else ""
-            if "W2_problem_analysis" in msg:
+            if "W1_problem" in msg:
                 for paper in papers:
                     combined = "\n\n".join(paper["chunks"][:2])
                     if combined[:100] in msg:
                         return _make_llm_response_w2w3(combined)
                 return _make_llm_response_w2w3("\n\n".join(papers[0]["chunks"][:2]))
-            if "W4_concrete_solutions" in msg:
+            if "W4_implementations" in msg:
                 for paper in papers:
                     combined = "\n\n".join(paper["chunks"][:3])
                     if combined[:100] in msg:
@@ -463,7 +463,7 @@ class TestFullPipeline:
             for a in atoms:
                 a.embedding = np.random.randn(1024).astype(np.float32)
             self.store.insert_blueprint(atoms, edges, paper["filename"])
-            all_w4_atoms.extend([a for a in atoms if a.level == "W4_concrete_solution"])
+            all_w4_atoms.extend([a for a in atoms if a.level == "W4_implementation"])
 
         assert len(all_w4_atoms) >= 3
 
@@ -555,13 +555,13 @@ class TestFullPipeline:
 
         def mock_fn(messages, **kwargs):
             msg = messages[0]["content"] if messages else ""
-            if "W2_problem_analysis" in msg:
+            if "W1_problem" in msg:
                 for paper in papers:
                     combined = "\n\n".join(paper["chunks"][:2])
                     if combined[:100] in msg:
                         return _make_llm_response_w2w3(combined)
                 return _make_llm_response_w2w3("\n\n".join(papers[0]["chunks"][:2]))
-            if "W4_concrete_solutions" in msg:
+            if "W4_implementations" in msg:
                 for paper in papers:
                     combined = "\n\n".join(paper["chunks"][:3])
                     if combined[:100] in msg:
@@ -592,7 +592,7 @@ class TestFullPipeline:
                 node_id=f"prop_w2_{uuid.uuid4().hex[:8]}",
                 name="Conservative Safe RL with Partial OT",
                 type="bottleneck",
-                level="W2_problem_analysis",
+                level="W1_problem",
                 context="Existing safe RL methods use full optimal transport which requires balanced mass. Partial OT allows unbalanced allocation, better modeling asymmetric safety constraints.",
                 embedding=np.random.randn(1024).astype(np.float32),
                 status="transient",
@@ -601,7 +601,7 @@ class TestFullPipeline:
                 node_id=f"prop_w3_{uuid.uuid4().hex[:8]}",
                 name="Partial Optimal Transport for Safety",
                 type="method",
-                level="W3_solution_direction",
+                level="W2_direction",
                 context="Use partial optimal transport with learnable cost to handle asymmetric safety-reward trade-offs.",
                 embedding=np.random.randn(1024).astype(np.float32),
                 status="transient",
@@ -610,7 +610,7 @@ class TestFullPipeline:
                 node_id=f"prop_w4_{uuid.uuid4().hex[:8]}",
                 name="Partial OT Safety Filter",
                 type="solution",
-                level="W4_concrete_solution",
+                level="W4_implementation",
                 context="Partial OT with entropic regularization and mass relaxation parameter for safety-constrained RL.",
                 embedding=np.random.randn(1024).astype(np.float32),
                 status="transient",
@@ -643,11 +643,11 @@ class TestFullPipeline:
         # Insert some atoms
         atoms = [
             Atom(node_id="w2_1", name="Test Problem", type="bottleneck",
-                 level="W2_problem_analysis", context="A test problem."),
+                 level="W1_problem", context="A test problem."),
             Atom(node_id="w3_1", name="Test Solution", type="method",
-                 level="W3_solution_direction", context="A test solution."),
+                 level="W2_direction", context="A test solution."),
             Atom(node_id="w4_1", name="Test Implementation", type="solution",
-                 level="W4_concrete_solution", context="A test implementation."),
+                 level="W4_implementation", context="A test implementation."),
         ]
         for a in atoms:
             a.embedding = np.random.randn(1024).astype(np.float32)
@@ -683,13 +683,13 @@ class TestFullPipeline:
         """Test that transient atoms are properly cleaned up."""
         transient = [
             Atom(node_id="t_w2", name="Temp Problem", type="bottleneck",
-                 level="W2_problem_analysis", context="temp", status="transient"),
+                 level="W1_problem", context="temp", status="transient"),
             Atom(node_id="t_w3", name="Temp Solution", type="method",
-                 level="W3_solution_direction", context="temp", status="transient"),
+                 level="W2_direction", context="temp", status="transient"),
         ]
         permanent = [
             Atom(node_id="p_w2", name="Real Problem", type="bottleneck",
-                 level="W2_problem_analysis", context="real", status="active"),
+                 level="W1_problem", context="real", status="active"),
         ]
 
         for a in transient + permanent:
@@ -703,20 +703,20 @@ class TestFullPipeline:
         self.store.insert_blueprint(transient + permanent, edges, "test.pdf")
 
         # Verify 3 atoms exist (counting all statuses including transient)
-        assert len(self.store.query_by_level("W2_problem_analysis", status=None)) == 2
-        assert len(self.store.query_by_level("W3_solution_direction", status=None)) == 1
+        assert len(self.store.query_by_level("W1_problem", status=None)) == 2
+        assert len(self.store.query_by_level("W2_direction", status=None)) == 1
 
         # Delete transient
         deleted = self.store.delete_transient()
         assert deleted == 2
 
         # Only permanent remains
-        remaining = self.store.query_by_level("W2_problem_analysis")
+        remaining = self.store.query_by_level("W1_problem")
         assert len(remaining) == 1
         assert remaining[0].node_id == "p_w2"
 
         # Cross edge should also be cleaned
-        all_w2 = self.store.query_by_level("W2_problem_analysis")
+        all_w2 = self.store.query_by_level("W1_problem")
         neighbors = self.store.get_neighbors("p_w2")
         assert "t_w2" not in neighbors
 
@@ -743,7 +743,7 @@ class TestFullPipeline:
                         node_id=e.tgt,
                         name="External Reference",
                         type="method",
-                        level="W3_solution_direction",
+                        level="W2_direction",
                         context="External method referenced for comparison.",
                         source_pdf=paper["filename"],
                         provenance={"via": "external_compare_target"},
@@ -786,11 +786,11 @@ class TestCrossPaperReduction:
         # Simulate W5 atoms from 3 papers on safe RL
         w5_atoms = [
             Atom(node_id="w5_copq_1", name="copq_critic_update", type="component",
-                 level="W5_code_implementation", context="Cholesky-ordered projection for Q target."),
+                 level="W5_code", context="Cholesky-ordered projection for Q target."),
             Atom(node_id="w5_copq_2", name="copq_actor_loss", type="component",
-                 level="W5_code_implementation", context="Actor loss with COP-Q constraints."),
+                 level="W5_code", context="Actor loss with COP-Q constraints."),
             Atom(node_id="w5_lag_1", name="lagrangian_safety_layer", type="component",
-                 level="W5_code_implementation", context="Lagrangian dual optimization for safety."),
+                 level="W5_code", context="Lagrangian dual optimization for safety."),
         ]
         for a in w5_atoms:
             a.embedding = np.random.randn(1024).astype(np.float32)
@@ -812,11 +812,11 @@ class TestCrossPaperReduction:
 
         new_atoms = reducer.reduce_level(
             w5_atoms, edges,
-            from_level="W5_code_implementation",
-            to_level="W4_concrete_solution",
+            from_level="W5_code",
+            to_level="W4_implementation",
             graph=self.store.graph,
         )
 
         assert len(new_atoms) >= 1
-        assert new_atoms[0].level == "W4_concrete_solution"
+        assert new_atoms[0].level == "W4_implementation"
         assert len(new_atoms[0].context) > 0

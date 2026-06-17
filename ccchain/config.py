@@ -30,10 +30,11 @@ class Config:
 
     # --- Evaluation ---
     hausdorff_weights: dict[str, float] = field(default_factory=lambda: {
-        "W2": 0.4,
-        "W3": 0.3,
-        "W4": 0.2,
-        "W5": 0.1,
+        "W1": 0.15,   # problem
+        "W2": 0.25,   # direction
+        "W3": 0.30,   # approach/思路 — highest discriminative weight
+        "W4": 0.20,   # implementation
+        "W5": 0.10,   # code
     })
 
     # --- Reference resolution (I3) ---

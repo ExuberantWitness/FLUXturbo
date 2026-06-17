@@ -75,7 +75,7 @@ class GraphRetriever(Retriever):
         # 3. W5 dense recall → w5_bias tiebreaker
         w5_indices = [
             node_index[name] for name, idx in node_index.items()
-            if graph.vs[idx]["level"] == "W5_code_implementation"
+            if graph.vs[idx]["level"] == "W5_code"
             and idx < len(embeddings)
         ]
         n = graph.vcount()

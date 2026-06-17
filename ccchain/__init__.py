@@ -177,12 +177,13 @@ def ingest(
         result = _store.insert_blueprint(atoms, edges, source_pdf)
         _progress("storing", 1.0)
 
-        # 4. Reduce (incremental per connected component)
+        # 4. Reduce (incremental per connected component) — bottom-up over 5 levels
         _progress("reducing", 0.0)
         for from_level, to_level in [
-            ("W5_code_implementation", "W4_concrete_solution"),
-            ("W4_concrete_solution", "W3_solution_direction"),
-            ("W3_solution_direction", "W2_problem_analysis"),
+            ("W5_code", "W4_implementation"),
+            ("W4_implementation", "W3_approach"),
+            ("W3_approach", "W2_direction"),
+            ("W2_direction", "W1_problem"),
         ]:
             new_atoms = _reducer.reduce_level(
                 atoms, edges, from_level, to_level, _store.graph
@@ -241,8 +242,8 @@ def ingest(
         # Build result summary
         trajectories = _store.get_all_trajectories()
         level_counts: dict[str, int] = {}
-        for lvl in ["W2_problem_analysis", "W3_solution_direction",
-                     "W4_concrete_solution", "W5_code_implementation"]:
+        for lvl in ["W1_problem", "W2_direction", "W3_approach",
+                     "W4_implementation", "W5_code"]:
             # status=None: count atoms regardless of audit outcome (the audit
             # just ran and flipped most atoms off 'active').
             level_counts[lvl] = len(_store.query_by_level(lvl, status=None))
@@ -270,8 +271,8 @@ def _collect_active_atoms() -> list:
     so re-ingesting a new paper never re-runs checks on prior atoms.
     """
     atoms: list = []
-    for lvl in ["W2_problem_analysis", "W3_solution_direction",
-                "W4_concrete_solution", "W5_code_implementation"]:
+    for lvl in ["W1_problem", "W2_direction", "W3_approach",
+                "W4_implementation", "W5_code"]:
         atoms.extend(_store.query_by_level(lvl))
     return atoms
 

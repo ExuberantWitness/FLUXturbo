@@ -1,7 +1,10 @@
-"""CC atom ontology: 12 unified types, 4 levels (W2-W5), edges, compatibility, and dataclasses.
+"""CC atom ontology: 12 atom types, 5 levels (W1-W5), edges, compatibility, and dataclasses.
 
-v0.3 design: type and level are 1:1 bound via TYPE_TO_LEVEL. Each type also
-declares which CoE integrity checks (I1-I4) apply via TYPE_TO_COE_CHECKS.
+v0.5 design: type and level are DECOUPLED. The 12 types form a flat vocabulary
+usable at any of the 5 levels (W1 problem → W5 code). An atom carries both an
+independently-chosen `level` (abstraction tier) and `type` (semantic category).
+Each type declares which CoE integrity checks (I1-I4) apply via
+TYPE_TO_COE_CHECKS — keyed by type only, independent of level.
 """
 
 from __future__ import annotations
@@ -9,65 +12,64 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 # ---------------------------------------------------------------------------
-# 12 CC Atom Types — organized by level (3 per level)
+# 12 CC Atom Types — flat vocabulary, decoupled from level (v0.5)
 # ---------------------------------------------------------------------------
 ATOM_TYPES: list[str] = [
-    # W2 problem analysis
     "problem", "bottleneck", "hypothesis",
-    # W3 solution direction
     "method", "citation", "concept",
-    # W4 concrete solution
     "solution", "numerical", "conclusion",
-    # W5 code implementation
     "component", "experiment", "verification",
 ]
 
 ATOM_TYPE_SET: set[str] = set(ATOM_TYPES)
 
+# Per-level DEFAULT type (used only as a fallback when an LLM omits the type).
+LEVEL_DEFAULT_TYPE: dict[str, str] = {
+    "W1_problem": "problem",
+    "W2_direction": "method",
+    "W3_approach": "method",
+    "W4_implementation": "solution",
+    "W5_code": "component",
+}
+
 # ---------------------------------------------------------------------------
-# Four knowledge levels (W2-W5)
+# Five knowledge levels (W1-W5) — abstraction tiers, type-independent
 # ---------------------------------------------------------------------------
 LEVELS: list[str] = [
-    "W2_problem_analysis",
-    "W3_solution_direction",
-    "W4_concrete_solution",
-    "W5_code_implementation",
+    "W1_problem",        # 问题：研究的问题/瓶颈
+    "W2_direction",      # 方向：研究方向
+    "W3_approach",       # 思路：核心方法/思路
+    "W4_implementation", # 具体实现
+    "W5_code",           # 代码
 ]
 
 LEVEL_ORDER: dict[str, int] = {
-    "W2_problem_analysis": 0,
-    "W3_solution_direction": 1,
-    "W4_concrete_solution": 2,
-    "W5_code_implementation": 3,
+    "W1_problem": 0,
+    "W2_direction": 1,
+    "W3_approach": 2,
+    "W4_implementation": 3,
+    "W5_code": 4,
 }
 
 LEVEL_ALIAS: dict[str, str] = {
-    "W2": "W2_problem_analysis",
-    "W3": "W3_solution_direction",
-    "W4": "W4_concrete_solution",
-    "W5": "W5_code_implementation",
+    "W1": "W1_problem",
+    "W2": "W2_direction",
+    "W3": "W3_approach",
+    "W4": "W4_implementation",
+    "W5": "W5_code",
+}
+
+# v0.4 (4-layer) → v0.5 (5-layer) level-string migration (idempotent).
+LEVEL_MIGRATION_V04_TO_V05: dict[str, str] = {
+    "W2_problem_analysis": "W1_problem",
+    "W3_solution_direction": "W2_direction",
+    "W4_concrete_solution": "W4_implementation",
+    "W5_code_implementation": "W5_code",
+    # W3_approach is a genuinely new tier (no v0.4 legacy).
 }
 
 # ---------------------------------------------------------------------------
-# Type ↔ Level binding (1:1)
-# ---------------------------------------------------------------------------
-TYPE_TO_LEVEL: dict[str, str] = {
-    "problem":      "W2_problem_analysis",
-    "bottleneck":   "W2_problem_analysis",
-    "hypothesis":   "W2_problem_analysis",
-    "method":       "W3_solution_direction",
-    "citation":     "W3_solution_direction",
-    "concept":      "W3_solution_direction",
-    "solution":     "W4_concrete_solution",
-    "numerical":    "W4_concrete_solution",
-    "conclusion":   "W4_concrete_solution",
-    "component":    "W5_code_implementation",
-    "experiment":   "W5_code_implementation",
-    "verification": "W5_code_implementation",
-}
-
-# ---------------------------------------------------------------------------
-# Type → CoE integrity checks triggered
+# Type → CoE integrity checks triggered (keyed by type, level-independent)
 # ---------------------------------------------------------------------------
 TYPE_TO_COE_CHECKS: dict[str, set[str]] = {
     "numerical":    {"I1"},
@@ -260,7 +262,7 @@ class Atom:
     node_id: str
     name: str
     type: str  # ∈ ATOM_TYPES
-    level: str  # ∈ LEVELS, must match TYPE_TO_LEVEL[type]
+    level: str  # ∈ LEVELS (v0.5: decoupled from type)
     context: str = ""
     version: int = 1
     source_pdf: str | None = None
@@ -279,16 +281,11 @@ class Atom:
     rowid: int | None = None  # SQLite implicit rowid; populated on load, not serialized
 
     def __post_init__(self):
+        # v0.5: type and level are DECOUPLED — validated independently.
         if self.type not in ATOM_TYPE_SET:
             raise ValueError(f"Invalid atom type: {self.type!r}")
         if self.level not in LEVEL_ORDER:
             raise ValueError(f"Invalid level: {self.level!r}")
-        expected_level = TYPE_TO_LEVEL[self.type]
-        if self.level != expected_level:
-            raise ValueError(
-                f"Type-level mismatch: type={self.type!r} requires level={expected_level!r}, "
-                f"got {self.level!r}"
-            )
 
     def to_dict(self) -> dict:
         d = {
@@ -386,8 +383,10 @@ class Edge:
 # ---------------------------------------------------------------------------
 @dataclass
 class Trajectory:
-    W2_problem: Atom | None = None
-    W3_solutions: list[Atom] = field(default_factory=list)
+    """A W1→W2→W3→W4→W5 research trajectory."""
+    W1_problem: Atom | None = None
+    W2_direction: list[Atom] = field(default_factory=list)
+    W3_approach: list[Atom] = field(default_factory=list)
     W4_implementations: list[Atom] = field(default_factory=list)
     W5_code: list[Atom] = field(default_factory=list)
     edges: list[Edge] = field(default_factory=list)
@@ -397,10 +396,13 @@ class Trajectory:
         """Return {level: (n, d) array} for atoms that have embeddings."""
         import numpy as np
 
-        result: dict[str, list] = {"W2": [], "W3": [], "W4": [], "W5": []}
-        if self.W2_problem is not None and self.W2_problem.embedding is not None:
-            result["W2"].append(self.W2_problem.embedding)
-        for a in self.W3_solutions:
+        result: dict[str, list] = {"W1": [], "W2": [], "W3": [], "W4": [], "W5": []}
+        if self.W1_problem is not None and self.W1_problem.embedding is not None:
+            result["W1"].append(self.W1_problem.embedding)
+        for a in self.W2_direction:
+            if a.embedding is not None:
+                result["W2"].append(a.embedding)
+        for a in self.W3_approach:
             if a.embedding is not None:
                 result["W3"].append(a.embedding)
         for a in self.W4_implementations:
@@ -416,8 +418,9 @@ class Trajectory:
 
     def to_dict(self) -> dict:
         return {
-            "W2_problem": self.W2_problem.to_dict() if self.W2_problem else None,
-            "W3_solutions": [a.to_dict() for a in self.W3_solutions],
+            "W1_problem": self.W1_problem.to_dict() if self.W1_problem else None,
+            "W2_direction": [a.to_dict() for a in self.W2_direction],
+            "W3_approach": [a.to_dict() for a in self.W3_approach],
             "W4_implementations": [a.to_dict() for a in self.W4_implementations],
             "W5_code": [a.to_dict() for a in self.W5_code],
             "edges": [e.to_dict() for e in self.edges],

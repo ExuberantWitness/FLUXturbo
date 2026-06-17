@@ -29,24 +29,24 @@ from typing import Any
 import numpy as np
 
 from ccchain.config import Config
-from ccchain.core.ontology import Atom, Edge, LEVEL_ORDER, TYPE_TO_LEVEL
+from ccchain.core.ontology import Atom, Edge, LEVEL_ORDER
 from ccchain.core.store import CCStore
 
 # Top-down processing order: classify by direction first, subdivide downward.
 _LEVELS_TOP_DOWN = [
-    "W2_problem_analysis",
-    "W3_solution_direction",
-    "W4_concrete_solution",
-    "W5_code_implementation",
+    "W1_problem",
+    "W2_direction",
+    "W3_approach",
+    "W4_implementation",
+    "W5_code",
 ]
 
-# Allowed atom types per level (3 each, mirrors _REDUCE_PROMPT in reduction.py).
-_LEVEL_ALLOWED_TYPES: dict[str, list[str]] = {
-    "W2_problem_analysis": ["problem", "bottleneck", "hypothesis"],
-    "W3_solution_direction": ["method", "citation", "concept"],
-    "W4_concrete_solution": ["solution", "numerical", "conclusion"],
-    "W5_code_implementation": ["component", "experiment", "verification"],
-}
+# v0.5: type is decoupled from level — the arbiter's canonical_type may be any
+# of the 12 types regardless of the merge level.
+_ALL_TYPES: list[str] = [
+    "problem", "bottleneck", "hypothesis", "method", "citation", "concept",
+    "solution", "numerical", "conclusion", "component", "experiment", "verification",
+]
 
 # Atoms in these statuses are skipped (already-merged, or evaluate() temporaries).
 _SKIP_STATUSES = frozenset({"merged", "transient"})
@@ -128,7 +128,7 @@ class HierarchicalConsolidator:
             level=level,
             parent_kind=parent_kind,
             atoms_json=atoms_json,
-            allowed_types=_LEVEL_ALLOWED_TYPES[level],
+            allowed_types=_ALL_TYPES,  # v0.5: decoupled — any type at any level
         )
         try:
             return chat_json_majority(
@@ -208,9 +208,9 @@ def _parent_grouping(
     """Group same-level atoms by their parent one level above.
 
     Returns {parent_node_id: [atoms]}. Orphans (no parent) land under key None.
-    Top level (W2) is a single group keyed by "__root__".
+    Top level (W1) is a single group keyed by "__root__".
     """
-    if level == "W2_problem_analysis":
+    if level == "W1_problem":
         return {"__root__": list(atoms)}
 
     groups: dict[str | None, list[Atom]] = defaultdict(list)
@@ -240,16 +240,17 @@ def _adjudicate_cluster(
     parent_id: str | None,
 ) -> _MergeDecision:
     parent_kind = (
-        "no parent (top level W2)" if parent_id in (None, "__root__")
+        "no parent (top level W1)" if parent_id in (None, "__root__")
         else f"parent {parent_id}"
     )
     resp = consolidator.judge_cluster(cluster, level, parent_kind)
     if not resp or not resp.get("merge"):
         return _MergeDecision(merge=False, reasoning=str(resp))
 
+    # v0.5: canonical_type is decoupled from level — validate against all 12 types.
     raw_type = resp.get("canonical_type") or ""
-    if raw_type not in _LEVEL_ALLOWED_TYPES[level]:
-        raw_type = _LEVEL_ALLOWED_TYPES[level][0]
+    if raw_type not in _ALL_TYPES:
+        raw_type = cluster[0].type or "method"
 
     canonical = cluster[0]  # reuse an existing node_id (mirrors _auto_dedup)
     return _MergeDecision(

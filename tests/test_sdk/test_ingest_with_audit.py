@@ -56,38 +56,46 @@ _PAPER_TEXT = (
 )
 
 _PHASE1_RESPONSE = {
-    "W2_problem_analysis": {
+    "W1_problem": {
         "name": "Credit Assignment Noise in CTDE",
         "context": "CTDE suffers from high-variance policy gradients due to noisy credit assignment.",
         "type": "bottleneck",
     },
-    "W3_solution_directions": [
+    "W2_directions": [
         {
             "name": "OT Credit Assignment",
             "context": "Optimal transport credit assignment via Sinkhorn distances.",
             "type": "method",
             "provenance": {"code_span": "section 3"},
-        },
-        {
-            "name": "Cuturi Sinkhorn",
-            "context": "Cuturi 2013 Sinkhorn distances framework.",
-            "type": "citation",
-            "provenance": {"raw_citation": "Cuturi, M. Sinkhorn Distances. NeurIPS 2013."},
+            "W3_approaches": [
+                {
+                    "name": "Sinkhorn OT Approach",
+                    "context": "Entropy-regularized OT credit assignment.",
+                    "type": "method",
+                    "provenance": {"code_span": "section 3"},
+                },
+                {
+                    "name": "Cuturi Sinkhorn",
+                    "context": "Cuturi 2013 Sinkhorn distances framework.",
+                    "type": "citation",
+                    "provenance": {"raw_citation": "Cuturi, M. Sinkhorn Distances. NeurIPS 2013."},
+                },
+            ],
         },
     ],
 }
 
 _PHASE2_RESPONSE = {
-    "W4_concrete_solutions": [
+    "W4_implementations": [
         {
             "name": "Sinkhorn OT Credit",
             "context": "Sinkhorn with entropy reg lambda=0.1. Win rate 0.95 on SMAC.",
             "type": "numerical",
             "provenance": {"score": 0.95, "score_std": 0.0},
-            "parent_W3_id": "OT Credit Assignment",
+            "parent_W3_id": "Sinkhorn OT Approach",
             "extends": [],
             "improves": [],
-            "W5_implementations": [
+            "W5_code": [
                 {
                     "name": "sinkhorn_experiment",
                     "context": "CTDE training loop on SMAC.",
@@ -159,9 +167,9 @@ def _mock_chat_json_factory():
     """Route chat_json calls to the right fixture by prompt content."""
     def _fn(messages, **kwargs):
         msg = messages[0]["content"] if messages else ""
-        if "W2_problem_analysis" in msg:
+        if "W1_problem" in msg:
             return _PHASE1_RESPONSE
-        if "W4_concrete_solutions" in msg:
+        if "W4_implementations" in msg:
             return _PHASE2_RESPONSE
         # Refiner / reducer / I1 fixes — accept anything the LLM proposes.
         if "score" in msg.lower() and "extract" in msg.lower():
@@ -301,9 +309,9 @@ def test_ingest_audited_statuses_persist_to_store(isolated_env):
         ccchain.ingest([_PAPER_TEXT], source_pdf="test.pdf")
 
     store = ccchain._store
-    all_statuses = {a.status for a in store.query_by_level("W4_concrete_solution", status=None)}
-    all_statuses |= {a.status for a in store.query_by_level("W3_solution_direction", status=None)}
-    all_statuses |= {a.status for a in store.query_by_level("W5_code_implementation", status=None)}
+    all_statuses = {a.status for a in store.query_by_level("W4_implementation", status=None)}
+    all_statuses |= {a.status for a in store.query_by_level("W2_direction", status=None)}
+    all_statuses |= {a.status for a in store.query_by_level("W5_code", status=None)}
     # No atom should be stuck on 'active' after audit ran.
     assert "active" not in all_statuses
     # Audit vocab must be present.

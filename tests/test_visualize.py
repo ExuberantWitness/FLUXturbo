@@ -15,16 +15,16 @@ def store():
     tmp = tempfile.mkdtemp(prefix="ccchain_vis_")
     s = CCStore(db_path=os.path.join(tmp, "t.db"), graph_dir=tmp)
     atoms = [
-        Atom(node_id="w2", name="Problem", type="bottleneck", level="W2_problem_analysis",
+        Atom(node_id="w2", name="Problem", type="bottleneck", level="W1_problem",
              context="core problem", source_pdf="p.pdf",
              provenance={"phase": "test"}),
-        Atom(node_id="w3", name="Method", type="method", level="W3_solution_direction",
+        Atom(node_id="w3", name="Method", type="method", level="W2_direction",
              context="an OT method", source_pdf="p.pdf",
              provenance={"code_span": "sec 3"}),
-        Atom(node_id="w4", name="Win rate", type="numerical", level="W4_concrete_solution",
+        Atom(node_id="w4", name="Win rate", type="numerical", level="W4_implementation",
              context="win rate 0.9", source_pdf="p.pdf",
              provenance={"score": 0.9, "score_std": 0.01}),
-        Atom(node_id="w5", name="impl", type="component", level="W5_code_implementation",
+        Atom(node_id="w5", name="impl", type="component", level="W5_code",
              context="code", source_pdf="p.pdf"),
     ]
     edges = [
@@ -85,8 +85,9 @@ def test_build_audit_html_embeds_payload_and_legend(store, tmp_path):
     assert "const levelBorder" in html
     # spec-chain legend present
     assert "border=level" in html
-    # all 4 levels' border colors referenced
-    for lvl_label in ["W2 Problem", "W3 Direction", "W4 Solution", "W5 Code"]:
+    # all 5 levels' border colors referenced
+    for lvl_label in ["W1 Problem", "W2 Direction", "W3 Approach",
+                      "W4 Implementation", "W5 Code"]:
         assert lvl_label in html
     # node ids present in the JSON payload
     assert '"w4"' in html

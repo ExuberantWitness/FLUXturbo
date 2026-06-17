@@ -29,13 +29,16 @@ def test_extract_phase1_parse(mock_chat):
     )
     atoms, edges = extractor._extract_phase1("test text", "test.pdf")
 
-    w2_atoms = [a for a in atoms if a.level == "W2_problem_analysis"]
-    w3_atoms = [a for a in atoms if a.level == "W3_solution_direction"]
+    w1_atoms = [a for a in atoms if a.level == "W1_problem"]
+    w2_atoms = [a for a in atoms if a.level == "W2_direction"]
+    w3_atoms = [a for a in atoms if a.level == "W3_approach"]
 
-    assert len(w2_atoms) == 1
-    assert len(w3_atoms) >= 1
-    assert w2_atoms[0].type == "bottleneck"
-    assert all(e.relation == "decomposes_into" or e.relation == "compares" for e in edges)
+    assert len(w1_atoms) == 1
+    assert len(w2_atoms) >= 1
+    assert len(w3_atoms) >= 1              # W3 approaches nested under W2
+    assert w1_atoms[0].type == "bottleneck"
+    rels = {e.relation for e in edges}
+    assert "decomposes_into" in rels and "aggregates_to" in rels
 
 
 @patch("ccchain.core.llm.chat_json")
@@ -50,8 +53,8 @@ def test_extract_phase2_parse(mock_chat):
     )
     atoms, edges = extractor._extract_phase2("test text", "test.pdf", [])
 
-    w4_atoms = [a for a in atoms if a.level == "W4_concrete_solution"]
-    w5_atoms = [a for a in atoms if a.level == "W5_code_implementation"]
+    w4_atoms = [a for a in atoms if a.level == "W4_implementation"]
+    w5_atoms = [a for a in atoms if a.level == "W5_code"]
 
     assert len(w4_atoms) >= 1
     assert len(w5_atoms) >= 1

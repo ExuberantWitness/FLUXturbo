@@ -9,11 +9,11 @@ from ccchain.plugins.retrieval import GraphRetriever
 def _make_test_graph_and_index() -> tuple[ig.Graph, dict[str, int]]:
     """Build a test graph with W2-W5 atoms and return (graph, node_index)."""
     g = ig.Graph()
-    g.add_vertex(name="w2_1", label="Problem X", type="bottleneck", level="W2_problem_analysis")
-    g.add_vertex(name="w3_1", label="Solution A", type="method", level="W3_solution_direction")
-    g.add_vertex(name="w4_1", label="Sinkhorn OT", type="method", level="W4_concrete_solution")
-    g.add_vertex(name="w5_1", label="sinkhorn()", type="component", level="W5_code_implementation")
-    g.add_vertex(name="w4_2", label="Shapley Credit", type="method", level="W4_concrete_solution")
+    g.add_vertex(name="w2_1", label="Problem X", type="bottleneck", level="W1_problem")
+    g.add_vertex(name="w3_1", label="Solution A", type="method", level="W2_direction")
+    g.add_vertex(name="w4_1", label="Sinkhorn OT", type="method", level="W4_implementation")
+    g.add_vertex(name="w5_1", label="sinkhorn()", type="component", level="W5_code")
+    g.add_vertex(name="w4_2", label="Shapley Credit", type="method", level="W4_implementation")
 
     g.add_edge(0, 1, relation="decomposes_into")
     g.add_edge(1, 2, relation="decomposes_into")
@@ -67,7 +67,7 @@ def test_search_returns_filtered_results():
 
     assert len(results) <= 3
     for r in results:
-        assert r["level"] == "W4_concrete_solution"
+        assert r["level"] == "W4_implementation"
 
 
 def test_search_empty_graph():

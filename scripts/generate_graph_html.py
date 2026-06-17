@@ -41,10 +41,10 @@ def generate_html():
     nodes = []
     level_counts = {}
     level_to_int = {
-        "W2_problem_analysis": 0,
-        "W3_solution_direction": 1,
-        "W4_concrete_solution": 2,
-        "W5_code_implementation": 3,
+        "W1_problem": 0,
+        "W2_direction": 1,
+        "W4_implementation": 2,
+        "W5_code": 3,
     }
 
     for v in g.vs:
@@ -81,10 +81,10 @@ def generate_html():
 
     # ── Level colors ────────────────────────────────────────────────────
     level_colors = {
-        "W2_problem_analysis":     {"bg": "#ef4444", "border": "#f87171", "highlight": "#dc2626", "label": "W2 Problem"},
-        "W3_solution_direction":   {"bg": "#f59e0b", "border": "#fbbf24", "highlight": "#d97706", "label": "W3 Direction"},
-        "W4_concrete_solution":    {"bg": "#3b82f6", "border": "#60a5fa", "highlight": "#2563eb", "label": "W4 Solution"},
-        "W5_code_implementation":  {"bg": "#10b981", "border": "#34d399", "highlight": "#059669", "label": "W5 Code"},
+        "W1_problem":     {"bg": "#ef4444", "border": "#f87171", "highlight": "#dc2626", "label": "W2 Problem"},
+        "W2_direction":   {"bg": "#f59e0b", "border": "#fbbf24", "highlight": "#d97706", "label": "W3 Direction"},
+        "W4_implementation":    {"bg": "#3b82f6", "border": "#60a5fa", "highlight": "#2563eb", "label": "W4 Solution"},
+        "W5_code":  {"bg": "#10b981", "border": "#34d399", "highlight": "#059669", "label": "W5 Code"},
     }
 
     # ── Build HTML ──────────────────────────────────────────────────────
@@ -93,9 +93,9 @@ def generate_html():
         groups_json[lvl] = {
             "color": {"background": c["bg"], "border": c["border"],
                        "highlight": {"background": c["highlight"], "border": c["border"]}},
-            "shape": "box" if lvl == "W2_problem_analysis" else "dot",
-            "size": {"W2_problem_analysis": 24, "W3_solution_direction": 16,
-                     "W4_concrete_solution": 12, "W5_code_implementation": 8}.get(lvl, 10),
+            "shape": "box" if lvl == "W1_problem" else "dot",
+            "size": {"W1_problem": 24, "W2_direction": 16,
+                     "W4_implementation": 12, "W5_code": 8}.get(lvl, 10),
             "font": {"size": 9, "color": "#cbd5e1", "face": "sans-serif",
                      "strokeWidth": 2, "strokeColor": "#0f172a"},
         }
@@ -167,10 +167,10 @@ footer {{ position: fixed; bottom: 4px; left: 12px; color: #334155; font-size: 1
   <h1>ccchain Knowledge Graph</h1>
   <span class="stat">Nodes: {len(nodes)}</span>
   <span class="stat">Edges: {len(edges)}</span>
-  <span class="stat">W2: {level_counts.get('W2_problem_analysis', 0)}</span>
-  <span class="stat">W3: {level_counts.get('W3_solution_direction', 0)}</span>
-  <span class="stat">W4: {level_counts.get('W4_concrete_solution', 0)}</span>
-  <span class="stat">W5: {level_counts.get('W5_code_implementation', 0)}</span>
+  <span class="stat">W2: {level_counts.get('W1_problem', 0)}</span>
+  <span class="stat">W3: {level_counts.get('W2_direction', 0)}</span>
+  <span class="stat">W4: {level_counts.get('W4_implementation', 0)}</span>
+  <span class="stat">W5: {level_counts.get('W5_code', 0)}</span>
 </div>
 <div id="controls">
   <input type="text" id="search-box" placeholder="Search node name or context...">
@@ -315,7 +315,7 @@ document.getElementById('search-box').addEventListener('input', function(e) {{
     updates.push({{
       id: n.id,
       borderWidth: match ? 3 : 0.5,
-      size: match ? (n.level === 'W2_problem_analysis' ? 32 : n.level === 'W3_solution_direction' ? 22 : n.level === 'W4_concrete_solution' ? 18 : 12) : null,
+      size: match ? (n.level === 'W1_problem' ? 32 : n.level === 'W2_direction' ? 22 : n.level === 'W4_implementation' ? 18 : 12) : null,
     }});
   }});
   nodes.update(updates);
@@ -405,50 +405,50 @@ def quick_sample():
     atoms_p1 = [
         # W2 — root problem
         Atom(node_id="P1_W2_credit", name="Credit Assignment in CTDE",
-             type="bottleneck", level="W2_problem_analysis",
+             type="bottleneck", level="W1_problem",
              context="Sparse team rewards cause high variance in policy gradients for individual agents in CTDE-MARL.",
              source_pdf=pdf, created_at=now, updated_at=now, embedding=_emb()),
         # W3 — two competing directions
         Atom(node_id="P1_W3_ot", name="Optimal Transport Credit Assignment",
-             type="method", level="W3_solution_direction",
+             type="method", level="W2_direction",
              context="Use optimal transport theory to match agent contributions to team rewards with minimal cost.",
              source_pdf=pdf, created_at=now, updated_at=now, embedding=_emb()),
         Atom(node_id="P1_W3_shapley", name="Shapley Value Credit Assignment",
-             type="method", level="W3_solution_direction",
+             type="method", level="W2_direction",
              context="Use Shapley values from cooperative game theory for axiomatic credit decomposition.",
              source_pdf=pdf, created_at=now, updated_at=now, embedding=_emb()),
         # W4 — concrete methods
         Atom(node_id="P1_W4_sinkhorn", name="Sinkhorn OT Credit (λ=0.1)",
-             type="method", level="W4_concrete_solution",
+             type="method", level="W4_implementation",
              context="Sinkhorn distance with entropy regularization λ=0.1 for fast OT-based credit assignment at scale.",
              source_pdf=pdf, created_at=now, updated_at=now, embedding=_emb()),
         Atom(node_id="P1_W4_wasserstein", name="Wasserstein-1 Credit Baseline",
-             type="method", level="W4_concrete_solution",
+             type="method", level="W4_implementation",
              context="Wasserstein-1 distance as a baseline OT variant without entropy regularization.",
              source_pdf=pdf, created_at=now, updated_at=now, embedding=_emb()),
         Atom(node_id="P1_W4_sv", name="Permutation-Sampled Shapley Value",
-             type="method", level="W4_concrete_solution",
+             type="method", level="W4_implementation",
              context="Monte Carlo permutation sampling to approximate Shapley values for large agent teams.",
              source_pdf=pdf, created_at=now, updated_at=now, embedding=_emb()),
         # W5 — code implementations
         Atom(node_id="P1_W5_sk1", name="sinkhorn_credit(cost, reg=0.1)",
-             type="component", level="W5_code_implementation",
+             type="component", level="W5_code",
              context="ot.sinkhorn2(cost_matrix, reg=0.1) — core Sinkhorn loop for agent-team reward matching.",
              code_ref="sinkhorn_credit", source_pdf=pdf, created_at=now, updated_at=now, embedding=_emb()),
         Atom(node_id="P1_W5_sk2", name="entropy_regularizer(lambda)",
-             type="component", level="W5_code_implementation",
+             type="component", level="W5_code",
              context="entropy_regularizer(lambda) — entropy term for Sinkhorn convergence speed vs accuracy trade-off.",
              code_ref="entropy_regularizer", source_pdf=pdf, created_at=now, updated_at=now, embedding=_emb()),
         Atom(node_id="P1_W5_ws1", name="wasserstein_credit(cost)",
-             type="component", level="W5_code_implementation",
+             type="component", level="W5_code",
              context="ot.emd2(cost_matrix) — exact Wasserstein distance for small-scale credit experiments.",
              code_ref="wasserstein_credit", source_pdf=pdf, created_at=now, updated_at=now, embedding=_emb()),
         Atom(node_id="P1_W5_sv1", name="permutation_shapley(n_agents, samples)",
-             type="component", level="W5_code_implementation",
+             type="component", level="W5_code",
              context="permutation_shapley(n_agents, n_samples=1000) — MC estimator of Shapley contributions.",
              code_ref="permutation_shapley", source_pdf=pdf, created_at=now, updated_at=now, embedding=_emb()),
         Atom(node_id="P1_W5_eval", name="evaluate_on_smac(scenario, method)",
-             type="component", level="W5_code_implementation",
+             type="component", level="W5_code",
              context="evaluate_on_smac(scenario='3m', method='sinkhorn') — SMAC benchmark harness.",
              code_ref="evaluate_on_smac", source_pdf=pdf, created_at=now, updated_at=now, embedding=_emb()),
     ]
@@ -487,23 +487,23 @@ def quick_sample():
     # ==== Paper 2: QMIX/VDN baseline paper (connected via compares) ====
     atoms_p2 = [
         Atom(node_id="P2_W2_value", name="Value Decomposition in MARL",
-             type="bottleneck", level="W2_problem_analysis",
+             type="bottleneck", level="W1_problem",
              context="IGM (Individual-Global-Max) constraint limits representational capacity in value-based MARL.",
              source_pdf="baseline_qmix.pdf", created_at=now, updated_at=now, embedding=_emb()),
         Atom(node_id="P2_W3_vdn", name="Value Decomposition Networks",
-             type="method", level="W3_solution_direction",
+             type="method", level="W2_direction",
              context="VDN: sum-decomposition Q_tot = Σ Q_i, satisfies IGM but limits joint action representation.",
              source_pdf="baseline_qmix.pdf", created_at=now, updated_at=now, embedding=_emb()),
         Atom(node_id="P2_W3_qmix", name="QMIX Monotonic Mixing",
-             type="method", level="W3_solution_direction",
+             type="method", level="W2_direction",
              context="QMIX: monotonic mixing network ∂Q_tot/∂Q_i ≥ 0, richer than VDN, still IGM-constrained.",
              source_pdf="baseline_qmix.pdf", created_at=now, updated_at=now, embedding=_emb()),
         Atom(node_id="P2_W4_vdn_impl", name="VDN Sum Decomposition",
-             type="method", level="W4_concrete_solution",
+             type="method", level="W4_implementation",
              context="Q_tot = sum(Q_i(o_i, a_i)); agent networks share parameters for scalability.",
              source_pdf="baseline_qmix.pdf", created_at=now, updated_at=now, embedding=_emb()),
         Atom(node_id="P2_W4_qmix_impl", name="QMIX Hypernetwork Mixer",
-             type="method", level="W4_concrete_solution",
+             type="method", level="W4_implementation",
              context="Hypernetwork generates mixing weights |W| = abs(W_raw), ensuring monotonicity.",
              source_pdf="baseline_qmix.pdf", created_at=now, updated_at=now, embedding=_emb()),
     ]

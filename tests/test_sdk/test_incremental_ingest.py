@@ -35,23 +35,27 @@ def _mock_embed():
 
 def _phase1(tag):
     return {
-        "W2_problem_analysis": {
+        "W1_problem": {
             "name": f"{tag} Problem", "type": "bottleneck",
             "context": f"{tag} core problem.",
         },
-        "W3_solution_directions": [
-            {"name": f"{tag} Method", "type": "method", "context": f"{tag} method.",
-             "provenance": {"code_span": "sec 3"}},
+        "W2_directions": [
+            {"name": f"{tag} Direction", "type": "method", "context": f"{tag} direction.",
+             "provenance": {"code_span": "sec 3"},
+             "W3_approaches": [
+                 {"name": f"{tag} Method", "type": "method", "context": f"{tag} method.",
+                  "provenance": {"code_span": "sec 3"}},
+             ]},
         ],
     }
 
 
 def _phase2(tag):
-    return {"W4_concrete_solutions": [{
+    return {"W4_implementations": [{
         "name": f"{tag} score", "type": "numerical",
         "context": f"{tag} achieves 0.9.", "provenance": {"score": 0.9, "score_std": 0.01},
         "parent_W3_id": f"{tag} Method", "extends": [], "improves": [],
-        "W5_implementations": [
+        "W5_code": [
             {"name": f"{tag} exp", "type": "experiment", "context": f"{tag} training.",
              "code_ref": "t", "code_body": "x=1", "provenance": {"code_span": "1-40"}},
         ],
@@ -63,9 +67,9 @@ def _mock_chat_json(tags):
     def _fn(messages, **kwargs):
         msg = messages[0]["content"] if messages else ""
         tag = tags[0]
-        if "W2_problem_analysis" in msg:
+        if "W1_problem" in msg:
             return _phase1(tag)
-        if "W4_concrete_solutions" in msg:
+        if "W4_implementations" in msg:
             return _phase2(tag)
         if "score" in msg.lower() and "extract" in msg.lower():
             return {"score": 0.9}        # I1 agrees
@@ -95,8 +99,8 @@ def _reset():
     ccchain._verifier = ccchain._consolidator = None
 
 
-_LEVELS = ["W2_problem_analysis", "W3_solution_direction",
-           "W4_concrete_solution", "W5_code_implementation"]
+_LEVELS = ["W1_problem", "W2_direction", "W3_approach",
+           "W4_implementation", "W5_code"]
 
 
 def _total_atoms(store):
@@ -285,15 +289,15 @@ def test_consolidate_merges_during_ingest_then_excludes_from_search(env):
 
     r1, _ = _do("A")
     r2, _ = _do("B")
-    # the second ingest's consolidate merged the two W2 problems
+    # the second ingest's consolidate merged the two W1 problems
     assert r2["consolidate_report"]["atoms_merged"] >= 1
 
-    w2 = ccchain._store.query_by_level("W2_problem_analysis", status=None)
-    statuses = [a.status for a in w2]
+    w1 = ccchain._store.query_by_level("W1_problem", status=None)
+    statuses = [a.status for a in w1]
     assert "merged" in statuses                      # one dup flipped
     # default search excludes merged
     with patch("ccchain.plugins.retrieval.embed", side_effect=_fixed_embed()):
-        default_res, _ = ccchain.search("problem", top_k=50, level="W2")
-        all_res, _ = ccchain.search("problem", top_k=50, level="W2", status="all")
+        default_res, _ = ccchain.search("problem", top_k=50, level="W1")
+        all_res, _ = ccchain.search("problem", top_k=50, level="W1", status="all")
     assert all(r["status"] != "merged" for r in default_res)
     assert any(r["status"] == "merged" for r in all_res)
