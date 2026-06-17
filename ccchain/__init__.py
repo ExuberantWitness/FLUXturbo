@@ -34,10 +34,11 @@ _reducer: Reducer | None = None
 _retriever: Retriever | None = None
 _evaluator: Evaluator | None = None
 _verifier: Verifier | None = None
+_consolidator = None  # ccchain.consolidate.HierarchicalConsolidator (utility, not an ABC)
 
 
 def _init(config: Config | None = None):
-    global _store, _extractor, _refiner, _reducer, _retriever, _evaluator, _verifier
+    global _store, _extractor, _refiner, _reducer, _retriever, _evaluator, _verifier, _consolidator
 
     if config is None:
         config = Config()
@@ -96,6 +97,16 @@ def _init(config: Config | None = None):
             i1_k=config.audit_i1_k,
         )
 
+    if _consolidator is None:
+        from ccchain.consolidate import HierarchicalConsolidator
+        _consolidator = HierarchicalConsolidator(
+            base_url=config.llm_base_url,
+            api_key=config.llm_api_key,
+            model=config.llm_model,
+            similarity_threshold=config.consolidate_similarity_threshold,
+            majority_k=config.consolidate_majority_k,
+        )
+
 
 def ingest(
     segments: list[str],
@@ -108,6 +119,7 @@ def ingest(
 
     Pipeline: extract (two-phase) → refine (iterative) → store (dual-write)
               → reduce (incremental per connected component)
+              → consolidate (cross-paper hierarchical merge, top-down)
               → audit (CoE integrity: I1/I2/I3/I4)
 
     Args:
@@ -121,7 +133,8 @@ def ingest(
 
     Returns:
         (result, error) tuple. On success, error=None and result contains
-        {node_count_by_level, edge_count, trajectory_count, audit_report}.
+        {node_count_by_level, edge_count, trajectory_count, consolidate_report,
+         audit_report}. consolidate_report is None when auto_consolidate is off.
     """
     try:
         _init()
@@ -205,6 +218,19 @@ def ingest(
 
         _progress("reducing", 1.0)
 
+        # 4b. Consolidate — cross-paper hierarchical merge (top-down, parallel).
+        # Runs before audit so freshly-merged canonical atoms (status="active")
+        # get a CoE check this pass; merged-away dups become status="merged"
+        # and drop out of audit + default search.
+        consolidate_report = None
+        if config.auto_consolidate:
+            _progress("consolidating", 0.0)
+            from ccchain.consolidate import consolidate as _consolidate_fn
+            consolidate_report = _consolidate_fn(
+                _store, config=config, on_progress=_progress
+            )
+            _progress("consolidating", 1.0)
+
         # 5. Audit (CoE Integrity: I1/I2/I3/I4) — mutates atom.status
         _progress("auditing", 0.0)
         all_atoms = _collect_active_atoms()
@@ -227,6 +253,7 @@ def ingest(
             "node_count_by_level": level_counts,
             "edge_count": result["inserted_edges"],
             "trajectory_count": len(trajectories),
+            "consolidate_report": consolidate_report,
             "audit_report": audit_report,
         }, None
 

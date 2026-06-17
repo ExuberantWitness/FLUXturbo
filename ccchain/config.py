@@ -45,3 +45,8 @@ class Config:
     # --- CoE Audit ---
     audit_majority_k: int = 5
     audit_i1_k: int = 1
+
+    # --- Cross-paper hierarchical consolidation (auto-runs in ingest) ---
+    auto_consolidate: bool = True
+    consolidate_similarity_threshold: float = 0.85
+    consolidate_majority_k: int = 3

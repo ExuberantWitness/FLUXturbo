@@ -279,6 +279,22 @@ class CCStore:
         assert self._embedding_cache is not None
         return self._embedding_cache
 
+    def query_embeddings_by_level(self, level: str) -> dict[str, "np.ndarray"]:
+        """Return {node_id: vector} for all embedded atoms at `level`.
+
+        Keyed by node_id (unlike get_all_embeddings, which is a positionally-
+        aligned bare ndarray). Used by consolidate for safe pairwise cosine.
+        """
+        rows = self.db.execute(
+            "SELECT node_id, embedding FROM cc_nodes "
+            "WHERE level = ? AND embedding IS NOT NULL",
+            (level,),
+        ).fetchall()
+        out: dict[str, np.ndarray] = {}
+        for r in rows:
+            out[r["node_id"]] = np.frombuffer(r["embedding"], dtype=np.float32)
+        return out
+
     def get_all_trajectories(self, domain: str | None = None) -> list[Trajectory]:
         """Build all trajectories: start from W5 atoms, trace upward via PPR on AGGREGATES_TO edges."""
         from ccchain.core.graph import local_ppr_path
@@ -537,6 +553,32 @@ class CCStore:
                 pass
         self.db.commit()
         return count
+
+    def edge_targets(self, src: str) -> list[tuple[str, str]]:
+        """Return [(tgt, relation), ...] for outgoing edges of `src`."""
+        rows = self.db.execute(
+            "SELECT tgt, relation FROM cc_edges WHERE src = ?", (src,)
+        ).fetchall()
+        return [(r["tgt"], r["relation"]) for r in rows]
+
+    def edge_sources(self, tgt: str) -> list[tuple[str, str]]:
+        """Return [(src, relation), ...] for incoming edges of `tgt`."""
+        rows = self.db.execute(
+            "SELECT src, relation FROM cc_edges WHERE tgt = ?", (tgt,)
+        ).fetchall()
+        return [(r["src"], r["relation"]) for r in rows]
+
+    def delete_edges_touching(self, node_ids: list[str]) -> int:
+        """Delete every edge whose src or tgt is in `node_ids`. Returns rows deleted."""
+        if not node_ids:
+            return 0
+        ph = ",".join("?" for _ in node_ids)
+        cur = self.db.execute(
+            f"DELETE FROM cc_edges WHERE src IN ({ph}) OR tgt IN ({ph})",
+            node_ids + node_ids,
+        )
+        self.db.commit()
+        return cur.rowcount
 
     def delete_transient(self) -> int:
         """Delete all atoms with status='transient' and their connected edges."""
