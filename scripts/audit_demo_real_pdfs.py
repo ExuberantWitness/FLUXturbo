@@ -304,12 +304,8 @@ def main():
     # ---- HTML visualization ----
     out_path = os.path.join(_REPO_ROOT, "blueprint_output", "audit_report.html")
     try:
-        import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            "audit_html", os.path.join(_REPO_ROOT, "scripts", "audit_html.py"))
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        abs_path = mod.build_audit_html(ccchain._store, reports, out_path)
+        from ccchain.visualize import build_audit_html
+        abs_path = build_audit_html(ccchain._store, reports, out_path)
         print(f"\nHTML report written: {abs_path}")
         print("Open it in a browser to explore the status-colored graph + per-atom CoE verdicts.")
     except Exception as exc:

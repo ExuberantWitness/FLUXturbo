@@ -1,10 +1,17 @@
-"""Build an interactive HTML report visualizing CoE audit outcomes.
+"""Interactive HTML visualization of CoE audit outcomes.
 
-Renders the knowledge graph with nodes colored by audit STATUS (not level),
-plus per-paper CPR cards and a click-through detail panel showing each atom's
-CoE check verdicts.
+Public entry point:
 
-Used by scripts/audit_demo_real_pdfs.py.
+    from ccchain.visualize import build_audit_html
+    path = build_audit_html(store, reports, "audit_report.html")
+
+Renders the knowledge graph with nodes whose FILL encodes audit status and
+whose BORDER encodes the W2→W3→W4→W5 specification level, plus per-paper CPR
+cards and a click-through detail panel showing each atom's CoE check verdicts.
+
+This is a reporting utility, not one of the three SDK methods (ingest/search/
+evaluate): it consumes a CCStore and one or more audit reports and emits a
+self-contained .html file (single dependency: the vis-network CDN script).
 """
 
 from __future__ import annotations
@@ -33,13 +40,7 @@ LEVEL_LABEL = {
 LEVEL_ORDER = {0: "W2_problem_analysis", 1: "W3_solution_direction",
                2: "W4_concrete_solution", 3: "W5_code_implementation"}
 LEVEL_TO_INT = {v: k for k, v in LEVEL_ORDER.items()}
-
-CHECK_LABELS = {
-    "I1": "Score Verification",
-    "I2": "Specification Violation",
-    "I3": "Reference Verification",
-    "I4": "Method-Code Alignment",
-}
+_LEVELS = list(LEVEL_ORDER.values())
 
 # Level → border color + semantic role (specification hierarchy W2→W3→W4→W5)
 LEVEL_BORDER = {
@@ -49,28 +50,71 @@ LEVEL_BORDER = {
     "W5_code_implementation":{"border": "#10b981", "label": "W5 Code"},
 }
 
+CHECK_LABELS = {
+    "I1": "Score Verification",
+    "I2": "Specification Violation",
+    "I3": "Reference Verification",
+    "I4": "Method-Code Alignment",
+}
 
-def build_audit_html(store, reports, output_path: str) -> str:
-    """Generate the audit HTML. Returns the absolute output path."""
-    levels = ["W2_problem_analysis", "W3_solution_direction",
-              "W4_concrete_solution", "W5_code_implementation"]
+# Node size by level (W2 largest → W5 smallest), reinforces the pyramid
+_LEVEL_SIZE = {
+    "W2_problem_analysis": 26, "W3_solution_direction": 18,
+    "W4_concrete_solution": 13, "W5_code_implementation": 9,
+}
 
-    # ── Gather atoms + per-atom check map ───────────────────────────────
+# Edge styling by relation
+EDGE_STYLES = {
+    "decomposes_into": {"color": "#3b82f6", "dashes": True, "width": 1.0},
+    "aggregates_to":   {"color": "#f59e0b", "dashes": False, "width": 1.4},
+    "extends":         {"color": "#10b981", "dashes": False, "width": 0.8},
+    "improves":        {"color": "#34d399", "dashes": False, "width": 0.8},
+    "compares":        {"color": "#a78bfa", "dashes": True, "width": 0.6},
+    "uses_component":  {"color": "#64748b", "dashes": False, "width": 0.6},
+}
+
+
+def build_audit_html(
+    store,
+    reports,
+    output_path: str,
+    *,
+    title: str = "ccchain · CoE Audit Report",
+) -> str:
+    """Render an interactive CoE audit report to a self-contained HTML file.
+
+    Args:
+        store: a :class:`~ccchain.core.store.CCStore`. Queried for every atom
+            (all levels, all statuses) and for the igraph edges.
+        reports: audit reports to summarize in the cards. Each item is either a
+            ``(label, audit_report)`` pair or a ``(label, ingest_result,
+            audit_report)`` triple — both accepted for convenience. ``label`` is
+            the source filename/identifier shown on the card; ``audit_report``
+            is the dict returned by the CoE verifier (keys: cpr, atoms_audited,
+            atoms_passed, atoms_failed, atoms_skipped, failures_by_check,
+            per_atom).
+        output_path: destination ``.html`` path (parent dirs are created).
+        title: HTML ``<title>`` and header label.
+
+    Returns:
+        The absolute path of the written file.
+    """
+    normalized = [_normalize_report(r) for r in (reports or [])]
+
+    # ── per-atom check map + nodes ──────────────────────────────────────
     check_map: dict[str, dict] = {}
-    for _fname, _result, ar in reports:
-        for pa in ar["per_atom"]:
+    for _label, ar in normalized:
+        for pa in ar.get("per_atom", []):
             check_map[pa["node_id"]] = pa.get("checks", {}) or {}
 
     atoms = []
-    for lvl in levels:
+    for lvl in _LEVELS:
         atoms.extend(store.query_by_level(lvl, status=None))
 
-    # ── Build vis-network nodes ─────────────────────────────────────────
     nodes = []
     atom_meta: dict[str, dict] = {}
     for a in atoms:
         status = a.status or "active"
-        sc = STATUS_COLORS.get(status, STATUS_COLORS["active"])
         short = (a.name or a.node_id)[:42]
         nodes.append({
             "id": a.node_id,
@@ -80,8 +124,7 @@ def build_audit_html(store, reports, output_path: str) -> str:
             "cc_level": a.level,
             "type": a.type,
             "status": status,
-            "size": {"W2_problem_analysis": 26, "W3_solution_direction": 18,
-                     "W4_concrete_solution": 13, "W5_code_implementation": 9}.get(a.level, 10),
+            "size": _LEVEL_SIZE.get(a.level, 10),
             "title": f"[{LEVEL_LABEL.get(a.level, a.level)}] {short}\n{a.type} · {status}",
         })
         atom_meta[a.node_id] = {
@@ -95,7 +138,7 @@ def build_audit_html(store, reports, output_path: str) -> str:
             "checks": check_map.get(a.node_id, {}),
         }
 
-    # ── Build edges from the igraph store ───────────────────────────────
+    # ── edges from the igraph store ─────────────────────────────────────
     g = store.graph
     edges = []
     for e in g.es:
@@ -105,54 +148,25 @@ def build_audit_html(store, reports, output_path: str) -> str:
         except (IndexError, KeyError):
             continue
         rel = e["relation"] or "related_to"
-        edges.append({"from": src_name, "to": tgt_name, "label": rel, "relation": rel})
-
-    # Edge styling by relation
-    edge_styles = {
-        "decomposes_into": {"color": "#3b82f6", "dashes": True, "width": 1.0},
-        "aggregates_to":   {"color": "#f59e0b", "dashes": False, "width": 1.4},
-        "extends":         {"color": "#10b981", "dashes": False, "width": 0.8},
-        "improves":        {"color": "#34d399", "dashes": False, "width": 0.8},
-        "compares":        {"color": "#a78bfa", "dashes": True, "width": 0.6},
-        "uses_component":  {"color": "#64748b", "dashes": False, "width": 0.6},
-    }
-    for e in edges:
-        st = edge_styles.get(e["relation"], {"color": "#475569", "dashes": False, "width": 0.5})
-        e["color"] = {"color": st["color"], "highlight": st["color"], "hover": st["color"]}
-        e["dashes"] = st["dashes"]
-        e["width"] = st["width"]
-
-    # ── Per-paper audit cards data ──────────────────────────────────────
-    cards = []
-    for fname, result, ar in reports:
-        from collections import Counter
-        status_counts = Counter(pa["status"] for pa in ar["per_atom"])
-        total = sum(status_counts.values()) or 1
-        cards.append({
-            "filename": fname,
-            "cpr": ar["cpr"],
-            "atoms_audited": ar["atoms_audited"],
-            "atoms_passed": ar["atoms_passed"],
-            "atoms_failed": ar["atoms_failed"],
-            "atoms_skipped": ar["atoms_skipped"],
-            "failures": ar["failures_by_check"],
-            "status_counts": dict(status_counts),
-            "status_total": total,
+        st = EDGE_STYLES.get(rel, {"color": "#475569", "dashes": False, "width": 0.5})
+        edges.append({
+            "from": src_name, "to": tgt_name, "label": rel, "relation": rel,
+            "color": {"color": st["color"], "highlight": st["color"], "hover": st["color"]},
+            "dashes": st["dashes"], "width": st["width"],
         })
 
-    # ── Assemble HTML ───────────────────────────────────────────────────
+    # ── per-paper cards + legend + toggles ──────────────────────────────
+    cards = [_card_data(label, ar) for label, ar in normalized]
     cards_html = _render_cards(cards)
+
     status_legend = "".join(
         f'<div class="legend-item"><div class="dot" style="background:{c["bg"]}"></div>{c["label"]}</div>'
         for c in STATUS_COLORS.values()
     )
-    # Specification-hierarchy legend: W2 → W3 → W4 → W5 (node BORDERS carry these colors)
-    level_order = ["W2_problem_analysis", "W3_solution_direction",
-                   "W4_concrete_solution", "W5_code_implementation"]
     level_legend_items = "".join(
         f'<div class="legend-item"><div class="ring" style="border-color:{LEVEL_BORDER[lvl]["border"]}"></div>'
         f'{LEVEL_BORDER[lvl]["label"]}</div>'
-        for lvl in level_order
+        for lvl in _LEVELS
     )
     legend_html = (
         f'<div class="legend-group"><span class="lg-title">fill=status</span>{status_legend}</div>'
@@ -173,8 +187,9 @@ def build_audit_html(store, reports, output_path: str) -> str:
         "check_labels": CHECK_LABELS,
     }
 
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     full = _HTML_TEMPLATE.format(
+        title=html.escape(title),
         cards_html=cards_html,
         legend_html=legend_html,
         toggle_buttons=toggle_buttons,
@@ -182,16 +197,44 @@ def build_audit_html(store, reports, output_path: str) -> str:
         edge_count=len(edges),
         paper_count=len(cards),
         payload=json.dumps(payload),
-        status_palette_json=json.dumps(
-            {k: v["bg"] for k, v in STATUS_COLORS.items()}
-        ),
-        level_border_json=json.dumps(
-            {k: v["border"] for k, v in LEVEL_BORDER.items()}
-        ),
+        status_palette_json=json.dumps({k: v["bg"] for k, v in STATUS_COLORS.items()}),
+        level_border_json=json.dumps({k: v["border"] for k, v in LEVEL_BORDER.items()}),
     )
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(full)
     return os.path.abspath(output_path)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+def _normalize_report(item) -> tuple[str, dict]:
+    """Accept (label, audit) or (label, result, audit) → (label, audit)."""
+    if len(item) == 3:
+        return str(item[0]), item[2]
+    if len(item) == 2:
+        return str(item[0]), item[1]
+    raise ValueError(
+        f"Each report must be a (label, audit_report) pair or "
+        f"(label, ingest_result, audit_report) triple; got {len(item)}-tuple."
+    )
+
+
+def _card_data(label: str, ar: dict) -> dict:
+    from collections import Counter
+    status_counts = Counter(pa["status"] for pa in ar.get("per_atom", []))
+    total = sum(status_counts.values()) or 1
+    return {
+        "filename": label,
+        "cpr": ar.get("cpr", 0.0),
+        "atoms_audited": ar.get("atoms_audited", 0),
+        "atoms_passed": ar.get("atoms_passed", 0),
+        "atoms_failed": ar.get("atoms_failed", 0),
+        "atoms_skipped": ar.get("atoms_skipped", 0),
+        "failures": ar.get("failures_by_check", {"I1": 0, "I2": 0, "I3": 0, "I4": 0}),
+        "status_counts": dict(status_counts),
+        "status_total": total,
+    }
 
 
 def _render_cards(cards: list[dict]) -> str:
@@ -199,10 +242,8 @@ def _render_cards(cards: list[dict]) -> str:
         return '<div class="empty">No audit reports.</div>'
     parts = []
     for c in cards:
-        # status breakdown bar
         bar_segments = []
-        order = ["verified", "low_confidence", "low_reliability", "demoted", "skipped", "active"]
-        for s in order:
+        for s in ["verified", "low_confidence", "low_reliability", "demoted", "skipped", "active"]:
             n = c["status_counts"].get(s, 0)
             if n == 0:
                 continue
@@ -214,7 +255,6 @@ def _render_cards(cards: list[dict]) -> str:
             )
         bar = "".join(bar_segments) or '<div class="bar-seg" style="width:100%;background:#1e293b"></div>'
 
-        # failure chips
         chips = []
         for chk in ["I1", "I2", "I3", "I4"]:
             n = c["failures"].get(chk, 0)
@@ -247,7 +287,7 @@ _HTML_TEMPLATE = """<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ccchain — CoE Audit Report</title>
+<title>{title}</title>
 <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 <style>
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
@@ -304,7 +344,7 @@ footer {{ position: fixed; bottom: 4px; left: 12px; color: #334155; font-size: 1
 </head>
 <body>
 <div id="header">
-  <h1>ccchain · CoE Audit Report <span class="sub">Chain-of-Evidence integrity (I1/I2/I3/I4)</span></h1>
+  <h1>{title} <span class="sub">Chain-of-Evidence integrity (I1/I2/I3/I4)</span></h1>
   <span class="stat">Papers: {paper_count}</span>
   <span class="stat">Atoms: {node_count}</span>
   <span class="stat">Edges: {edge_count}</span>
@@ -325,7 +365,7 @@ footer {{ position: fixed; bottom: 4px; left: 12px; color: #334155; font-size: 1
     <div id="info-content"></div>
   </div>
 </div>
-<footer>ccchain v0.3 · CoE audit · real PDF text</footer>
+<footer>ccchain v0.3 · CoE audit</footer>
 
 <script>
 const data = {payload};
@@ -365,8 +405,6 @@ document.querySelectorAll('.status-btn').forEach(btn => {{
     const s = btn.dataset.status;
     if (hiddenStatus.has(s)) {{ hiddenStatus.delete(s); btn.classList.add('active'); }}
     else {{ hiddenStatus.add(s); btn.classList.remove('active'); }}
-    nodes.forEach(n => network.updateClusteredNode
-      ? null : null);
     data.nodes.forEach(n => {{
       nodes.update({{ id: n.id, hidden: hiddenStatus.has(n.status) }});
     }});
@@ -394,7 +432,6 @@ network.on('click', params => {{
   h += '<h3>' + (meta.name || nid) + '</h3>';
   if (meta.source_pdf) h += '<div class="meta">source: ' + meta.source_pdf + '</div>';
   h += '<div class="section-label">Context</div><div class="body-box">' + esc(meta.context) + '</div>';
-  // CoE checks
   const chk = meta.checks || {{}};
   const keys = Object.keys(chk);
   if (keys.length) {{
@@ -414,7 +451,6 @@ network.on('click', params => {{
   }} else {{
     h += '<div class="section-label">CoE Checks</div><div class="meta muted">None applicable for this atom type.</div>';
   }}
-  // Provenance
   const pv = meta.provenance || {{}};
   if (Object.keys(pv).length) {{
     h += '<div class="section-label">Provenance</div><div class="body-box">' + esc(JSON.stringify(pv, null, 1)) + '</div>';
