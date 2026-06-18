@@ -264,7 +264,7 @@ def _bar(n, width=24, scale=None):
 def main():
     papers = load_papers()
     print(f"Loaded {len(papers)} PDFs: {[p['filename'] for p in papers]}\n")
-    print(f"Shared injected concept: W2 '{SHARED_W2}' (each paper extracts it)\n")
+    print(f"Shared injected concept: W1 problem '{SHARED_W2}' (each paper extracts it)\n")
 
     results = {
         "S-off (v0.3, no consolidate)": _run_mode(papers, "S-off", "Soff"),
@@ -281,7 +281,7 @@ def main():
               f"{r['merged_atoms']:>7} {r['dedup_rate']*100:>6.1f}% {r['final_cpr']:>5.2f}")
     print("=" * 78)
 
-    print("\nW2 'RL Challenges' atoms (the shared concept):")
+    print("\nW1 'RL Challenges' atoms (the shared concept, problem tier):")
     maxw = max(r["w2_total"] for r in results.values())
     for name, r in results.items():
         print(f"  {name:<38} total={r['w2_total']}  live={r['w2_live']}  merged={r['w2_merged']}")
@@ -295,10 +295,10 @@ def main():
         print(f"  {name:<38} {r['total_atoms']:>3} {_bar(r['total_atoms'], scale=max_total)}")
 
     print("\nInterpretation:")
-    print("  - S-off vs S-on : consolidate MERGES the 3 duplicate 'RL Challenges' W2")
-    print("    atoms accumulated across sequential ingests down to 1 canonical")
+    print("  - S-off vs S-on : consolidate MERGES the 3 duplicate 'RL Challenges' W1")
+    print("    problem atoms accumulated across sequential ingests down to 1 canonical")
     print(f"    ({results['S-on  (v0.4, consolidate)']['dedup_rate']*100:.0f}% dedup).")
-    print("  - S-on vs 1-shot: both end with 10 live atoms and 1 shared-W2 canonical.")
+    print("  - S-on vs 1-shot: both end with 10 live atoms and 1 shared-W1 canonical.")
     print("    Sequential reaches the SAME deduplicated state as one-shot — just")
     print("    incrementally (merging 3->1) instead of extracting 1 up front.")
     print("  - 1-shot caveat : combined text must fit the extractor's prompt window;")
