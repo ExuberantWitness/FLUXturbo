@@ -4,13 +4,28 @@
 
 [English](#english) | 中文
 
+> 📰 **更新** (2026-06) — **完全支持 [Open Knowledge Format (OKF)](https://google.github.io/open-knowledge-format/) 双向互操作**：知识图谱可作为一个目录的 markdown 文件移植，不锁定、可被任意 agent / 可视化器消费。ccchain 嵌入端点现支持与 LLM **独立配置**（`embedder_api_key`，可 LLM=DeepSeek + 嵌入=SiliconFlow）。
+>
 > 📰 **v0.1.0** (2026-06-12) — Initial release: CC v2 aligned extraction, 8 atom types + 11 edge types + Rho evidence records, OntologyGatekeeper validation, MCP Server stdio transport.
 
 ---
 
-> 🧬 **FLUXturbo 是 Flux-Insight 生态的知识提取引擎。** 它不是一个完整的科研自动化系统，而是将 Claim Chain v2 本体论（8 种 atom 类型、11 种 edge 类型、Rho 证据记录、OntologyGatekeeper 验证规则）封装为一个独立的 MCP Server。任何 MCP 客户端（Claude Code、VS Code、自定义 Agent）都可以通过 4 个标准化工具调用它，从学术文本中提取结构化的 claim chain。
+> 🧬 **FLUXturbo 是 Flux-Insight 生态的知识提取引擎。** 它不是一个完整的科研自动化系统，而是将 Claim Chain v2 本体论（8 种 atom 类型、11 种 edge 类型、Rho 证据记录、OntologyGatekeeper 验证规则）封装为一个独立的 MCP Server。任何 MCP 客户端（Claude Code、VS Code、自定义 Agent）都可以通过 4 个标准化工具调用它，从学术文本中提取结构化的 claim chain。提取出的知识默认能以 **Open Knowledge Format** 落盘——不锁定、可移植、社区可共建。
 
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat)](LICENSE) · [![MCP](https://img.shields.io/badge/MCP-4_tools-blue?style=flat)]() · [![CC](https://img.shields.io/badge/Claim_Chain-v2-8A2BE2?style=flat)]() · [![Python](https://img.shields.io/badge/Python-3.10+-blue?style=flat)]() · [![Ontology](https://img.shields.io/badge/Atoms-8_types-red?style=flat)]() · [![Edges](https://img.shields.io/badge/Edges-11_types-orange?style=flat)]()
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat)](LICENSE) · [![MCP](https://img.shields.io/badge/MCP-4_tools-blue?style=flat)]() · [![CC](https://img.shields.io/badge/Claim_Chain-v2-8A2BE2?style=flat)]() · [![OKF](https://img.shields.io/badge/Open_Knowledge_Format-supported-success?style=flat)]() · [![Python](https://img.shields.io/badge/Python-3.10+-blue?style=flat)]() · [![Ontology](https://img.shields.io/badge/Atoms-8_types-red?style=flat)]() · [![Edges](https://img.shields.io/badge/Edges-11_types-orange?style=flat)]()
+
+---
+
+## ⭐ 为什么值得 Star
+
+这个项目我自己每天在用，所以我会一直维护它。
+
+- 有新的提取需求、新的 atom / edge 类型、新的下游格式（**OKF** / HippoRAG / Flux-Insight），我会陆续加上
+- 每个能力我都尽量保证：**能用、好用、本地可跑**
+- 上游 LLM API 改了、schema 变了、依赖更新了，我会想办法解决
+- 知识默认以 **Open Knowledge Format** 落盘——不锁定、可移植、可被任意 agent / 可视化工具消费，为 **Web 4.0 的开放知识基建**贡献一份自己的力量
+
+Star 一下，下次做知识图谱 / 文献提取的时候能找到。⭐
 
 ---
 
@@ -404,9 +419,18 @@ python scripts/audit_demo_real_pdfs.py
 
 ---
 
-## 📦 Open Knowledge Format (OKF) 互操作
+## 📦 Open Knowledge Format (OKF) — 完全支持
+
+> ✅ **FLUXturbo 现已完全支持 [Open Knowledge Format](https://google.github.io/open-knowledge-format/) 的双向互操作**（export / import，全状态保真）。知识图谱不再是困在私有 SQLite 里的数据孤岛，而是一个**任何人、任何工具都能读写的开放 bundle**。
 
 `ccchain.okf` 让知识图谱作为 **[OKF v0.1](https://google.github.io/open-knowledge-format/)** bundle 可移植——一个目录的 markdown 文件，每个 atom 一个 concept，YAML frontmatter + markdown 链接图。导出的 bundle 可在 GitHub / Obsidian / 任意 OKF 消费者（agent、可视化器）里直接浏览，**不依赖 ccchain**。
+
+### 为什么 OKF 重要（对本项目和社区的意义）
+
+- **不锁定（no lock-in）**：导出的就是带 YAML frontmatter 的纯 markdown，GitHub / Obsidian / 任意 OKF 消费者直接能读，**完全不依赖 ccchain**。你的知识资产永远握在自己手里。
+- **可移植 + 可协作**：一个 atom 一个 `.md`、边即 markdown 链接，天然适合 `git diff` / PR / review——知识可以像代码一样被社区 **fork、合并、共建**。
+- **双向保真**：`export → import` 回到一个新 store，atom（type / level / provenance）与 edge 完整恢复（测试锁定）；连**外部 OKF**（非本项目产出、用任意 type 词表）也能优雅导入。
+- **生态互通 / Web 4.0 基建**：OKF 是 agent 之间交换结构化知识的通用载体。完全支持 OKF，意味着 FLUXturbo 产出的知识能直接喂给下游 agent、可视化器、其他知识库，成为**开放知识基建**的一块标准拼图，而不是又一个私有格式。
 
 ```python
 from ccchain.okf import export_okf, import_okf
@@ -463,6 +487,8 @@ bundle 还含 `index.md`（W1→W5 层级总览，渐进式披露）和 `log.md`
 - [x] **并行批量提取** — ThreadPoolExecutor 支持，可配置并发数
 - [x] **vis.js 图谱可视化** — 8 色 CC atom 类型着色 + 搜索 + 标签切换
 - [x] **LEAP 论文对齐** — blueprint → verification 两阶段设计
+- [x] **Open Knowledge Format (OKF) 完全支持** — `ccchain.okf` 双向 export / import，全状态保真，知识图谱作为可移植的开放 markdown bundle
+- [x] **嵌入端点独立配置** — `embedder_api_key`，嵌入与 LLM 可用不同 provider / key（如 LLM=DeepSeek + 嵌入=SiliconFlow）
 
 ### Planned / 计划中
 

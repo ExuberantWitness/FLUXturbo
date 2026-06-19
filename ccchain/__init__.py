@@ -71,7 +71,7 @@ def _init(config: Config | None = None):
         _retriever = GraphRetriever(
             embedder_base_url=config.embedder_base_url,
             embedder_model=config.embedder_model,
-            embedder_api_key=config.llm_api_key,
+            embedder_api_key=config.embedder_api_key,
             link_top_k=config.link_top_k,
             ppr_damping=config.ppr_damping,
             w5_bias_weight=config.w5_bias_weight,
@@ -159,7 +159,7 @@ def ingest(
                 texts,
                 base_url=config.embedder_base_url,
                 model=config.embedder_model,
-                api_key=config.llm_api_key,
+                api_key=config.embedder_api_key,
             )
             for a, emb in zip(atoms, embeddings):
                 a.embedding = emb
@@ -195,7 +195,7 @@ def ingest(
                     texts,
                     base_url=config.embedder_base_url,
                     model=config.embedder_model,
-                    api_key=config.llm_api_key,
+                    api_key=config.embedder_api_key,
                 )
                 for a, emb in zip(new_atoms, embeddings):
                     a.embedding = emb
@@ -393,7 +393,7 @@ def evaluate(
                 texts,
                 base_url=config.embedder_base_url,
                 model=config.embedder_model,
-                api_key=config.llm_api_key,
+                api_key=config.embedder_api_key,
             )
             for a, emb in zip(atoms, embeddings):
                 a.embedding = emb

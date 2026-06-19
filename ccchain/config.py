@@ -19,6 +19,10 @@ class Config:
     # --- Embedding ---
     embedder_base_url: str = "http://localhost:11434/v1"
     embedder_model: str = "bge-m3:latest"
+    # Separate key for the embeddings endpoint. Lets the embeddings provider
+    # differ from the LLM provider (e.g. LLM=DeepSeek + embeddings=SiliconFlow).
+    # Defaults to "ollama" so standalone local runs stay key-agnostic.
+    embedder_api_key: str = "ollama"
 
     # --- Retrieval parameters ---
     link_top_k: int = 10

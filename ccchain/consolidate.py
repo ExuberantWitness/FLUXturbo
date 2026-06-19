@@ -411,7 +411,7 @@ def consolidate(
                 texts = [a.context for a in canon_atoms]
                 embs = embed(
                     texts, base_url=config.embedder_base_url,
-                    model=config.embedder_model, api_key=config.llm_api_key,
+                    model=config.embedder_model, api_key=config.embedder_api_key,
                 )
                 for a, e in zip(canon_atoms, embs):
                     a.embedding = e
