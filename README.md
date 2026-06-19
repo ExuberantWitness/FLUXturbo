@@ -404,6 +404,54 @@ python scripts/audit_demo_real_pdfs.py
 
 ---
 
+## 📦 Open Knowledge Format (OKF) 互操作
+
+`ccchain.okf` 让知识图谱作为 **[OKF v0.1](https://google.github.io/open-knowledge-format/)** bundle 可移植——一个目录的 markdown 文件，每个 atom 一个 concept，YAML frontmatter + markdown 链接图。导出的 bundle 可在 GitHub / Obsidian / 任意 OKF 消费者（agent、可视化器）里直接浏览，**不依赖 ccchain**。
+
+```python
+from ccchain.okf import export_okf, import_okf
+
+# 导出：ccchain 图 → OKF bundle（一个 atom 一个 .md，边变成 markdown 链接）
+export_okf(store, "my_bundle/")
+
+# 导入：OKF bundle → ccchain 图（frontmatter → atoms，链接 → edges）
+report = import_okf("my_bundle/", store)
+# report = {atoms_imported, edges_imported, concepts_skipped}
+```
+
+**导出的 concept（OKF 合规 + ccchain 全状态）**：
+
+````markdown
+---
+type: method                       # OKF 唯一必填字段
+title: COP-Q Joint Covariance Critic
+description: Models inter-objective covariance via Cholesky-ordered projection.
+resource: cop-q.pdf                # 接地来源
+tags: [domain:MARL]
+timestamp: 2026-06-19T...
+ccchain_node_id: W3_cop-q_...      # ccchain 扩展（OKF 允许任意额外字段）
+ccchain_level: W3_approach
+ccchain_status: verified
+ccchain_provenance: {code_span: section 3}
+---
+Models inter-objective covariance via Cholesky-ordered projection.
+
+## Relations
+- decomposes_into → [Win Rate](W4_implementation/w4.md)
+- aggregates_to → [OT Direction](W2_direction/w2.md)
+
+## Provenance
+```json
+{"code_span": "section 3"}
+```
+````
+
+bundle 还含 `index.md`（W1→W5 层级总览，渐进式披露）和 `log.md`（变更历史）。
+
+**双向保真**：`export → import` 回到一个新 store，atom（type/level/provenance）和 edge 完整恢复（测试锁定）。**外部 OKF**（非 ccchain 产出、用任意 type 词表）也能导入——未知 type 优雅降级并把原 type 记入 `provenance.okf_original_type`。
+
+---
+
 ## 📋 Roadmap
 
 ### Done / 已完成
