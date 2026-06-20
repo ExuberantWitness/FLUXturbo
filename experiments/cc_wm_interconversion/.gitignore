@@ -1,0 +1,12 @@
+# heavy / data / secrets — not committed
+*.pt
+*.h5
+*.db
+*.db-shm
+*.db-wal
+*.ckpt
+.venv/
+venv/
+__pycache__/
+*.pyc
+data/

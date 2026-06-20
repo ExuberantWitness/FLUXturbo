@@ -1,0 +1,382 @@
+{
+  "atoms": [
+    {
+      "node_id": "method:LeWM-reacher",
+      "name": "LeWM-reacher latent encoder",
+      "type": "method",
+      "level": "W3_approach",
+      "context": "JEPA world model: ViT-Tiny encoder (192-d) + ARPredictor. Latent z=encode(pixels) is the physical-perception layer.",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "verified",
+      "updated_at": "2026-06-20T08:16:02",
+      "provenance": {
+        "arch": "ViT-Tiny+ARPredictor",
+        "params_M": 18.0
+      }
+    },
+    {
+      "node_id": "hyp:latent_encodes_state",
+      "name": "reacher latent linearly encodes kinematic state",
+      "type": "hypothesis",
+      "level": "W3_approach",
+      "context": "Probing hypothesis: z linearly decodable into qpos/qvel/obs.",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "needs_review",
+      "updated_at": "2026-06-20T08:16:02"
+    },
+    {
+      "node_id": "num:r2:observation[0]",
+      "name": "R²(z→observation[0])=0.99",
+      "type": "numerical",
+      "level": "W4_implementation",
+      "context": "Linear probe: latent z linearly encodes observation[0] (test R²=0.988, control R²=-0.072, selectivity=1.060, n=2500).",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "verified",
+      "updated_at": "2026-06-20T08:16:02",
+      "provenance": {
+        "score": 0.9882,
+        "metric": "test_R2",
+        "target": "observation[0]",
+        "control_R2": -0.0718
+      }
+    },
+    {
+      "node_id": "num:r2:observation[1]",
+      "name": "R²(z→observation[1])=0.99",
+      "type": "numerical",
+      "level": "W4_implementation",
+      "context": "Linear probe: latent z linearly encodes observation[1] (test R²=0.987, control R²=-0.064, selectivity=1.051, n=2500).",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "verified",
+      "updated_at": "2026-06-20T08:16:02",
+      "provenance": {
+        "score": 0.9869,
+        "metric": "test_R2",
+        "target": "observation[1]",
+        "control_R2": -0.0637
+      }
+    },
+    {
+      "node_id": "num:r2:observation[2]",
+      "name": "R²(z→observation[2])=0.98",
+      "type": "numerical",
+      "level": "W4_implementation",
+      "context": "Linear probe: latent z linearly encodes observation[2] (test R²=0.975, control R²=-0.097, selectivity=1.072, n=2500).",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "verified",
+      "updated_at": "2026-06-20T08:16:02",
+      "provenance": {
+        "score": 0.9753,
+        "metric": "test_R2",
+        "target": "observation[2]",
+        "control_R2": -0.0966
+      }
+    },
+    {
+      "node_id": "num:r2:observation[3]",
+      "name": "R²(z→observation[3])=0.98",
+      "type": "numerical",
+      "level": "W4_implementation",
+      "context": "Linear probe: latent z linearly encodes observation[3] (test R²=0.983, control R²=-0.073, selectivity=1.056, n=2500).",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "verified",
+      "updated_at": "2026-06-20T08:16:02",
+      "provenance": {
+        "score": 0.983,
+        "metric": "test_R2",
+        "target": "observation[3]",
+        "control_R2": -0.0732
+      }
+    },
+    {
+      "node_id": "concept:boundary:observation[4]",
+      "name": "encoding boundary: observation[4]",
+      "type": "concept",
+      "level": "W3_approach",
+      "context": "Latent FAILS to linearly encode observation[4] (R²=0.077) — representational limitation.",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "low_reliability",
+      "updated_at": "2026-06-20T08:16:02",
+      "provenance": {
+        "score": 0.0769,
+        "metric": "test_R2",
+        "target": "observation[4]"
+      }
+    },
+    {
+      "node_id": "concept:boundary:observation[5]",
+      "name": "encoding boundary: observation[5]",
+      "type": "concept",
+      "level": "W3_approach",
+      "context": "Latent FAILS to linearly encode observation[5] (R²=0.005) — representational limitation.",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "low_reliability",
+      "updated_at": "2026-06-20T08:16:02",
+      "provenance": {
+        "score": 0.005,
+        "metric": "test_R2",
+        "target": "observation[5]"
+      }
+    },
+    {
+      "node_id": "num:r2:qpos[0]",
+      "name": "R²(z→qpos[0])=0.99",
+      "type": "numerical",
+      "level": "W4_implementation",
+      "context": "Linear probe: latent z linearly encodes qpos[0] (test R²=0.990, control R²=-0.095, selectivity=1.085, n=2500).",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "verified",
+      "updated_at": "2026-06-20T08:16:02",
+      "provenance": {
+        "score": 0.9902,
+        "metric": "test_R2",
+        "target": "qpos[0]",
+        "control_R2": -0.0952
+      }
+    },
+    {
+      "node_id": "num:r2:qpos[1]",
+      "name": "R²(z→qpos[1])=0.99",
+      "type": "numerical",
+      "level": "W4_implementation",
+      "context": "Linear probe: latent z linearly encodes qpos[1] (test R²=0.989, control R²=-0.059, selectivity=1.048, n=2500).",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "verified",
+      "updated_at": "2026-06-20T08:16:02",
+      "provenance": {
+        "score": 0.9888,
+        "metric": "test_R2",
+        "target": "qpos[1]",
+        "control_R2": -0.0592
+      }
+    },
+    {
+      "node_id": "concept:boundary:qvel[0]",
+      "name": "encoding boundary: qvel[0]",
+      "type": "concept",
+      "level": "W3_approach",
+      "context": "Latent FAILS to linearly encode qvel[0] (R²=0.204) — representational limitation.",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "low_reliability",
+      "updated_at": "2026-06-20T08:16:02",
+      "provenance": {
+        "score": 0.2037,
+        "metric": "test_R2",
+        "target": "qvel[0]"
+      }
+    },
+    {
+      "node_id": "concept:boundary:qvel[1]",
+      "name": "encoding boundary: qvel[1]",
+      "type": "concept",
+      "level": "W3_approach",
+      "context": "Latent FAILS to linearly encode qvel[1] (R²=-0.029) — representational limitation.",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "low_reliability",
+      "updated_at": "2026-06-20T08:16:02",
+      "provenance": {
+        "score": -0.0292,
+        "metric": "test_R2",
+        "target": "qvel[1]"
+      }
+    },
+    {
+      "node_id": "bottleneck:representational_limitation",
+      "name": "representational_limitation: qvel[1]",
+      "type": "bottleneck",
+      "level": "W2_direction",
+      "context": "Latent cannot encode qvel[1] (R²=-0.029). Candidate for CC→WM compile-back (auxiliary decode head).",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "low_reliability",
+      "updated_at": "2026-06-20T08:16:02",
+      "provenance": {
+        "worst_target": "qvel[1]",
+        "r2": -0.0292
+      }
+    },
+    {
+      "node_id": "component:pca0",
+      "name": "latent subspace PC1 (var=0.12)",
+      "type": "component",
+      "level": "W5_code",
+      "context": "PCA component 1, explained variance 0.125.",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "active",
+      "updated_at": "2026-06-20T08:16:02"
+    },
+    {
+      "node_id": "component:pca1",
+      "name": "latent subspace PC2 (var=0.09)",
+      "type": "component",
+      "level": "W5_code",
+      "context": "PCA component 2, explained variance 0.087.",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "active",
+      "updated_at": "2026-06-20T08:16:02"
+    },
+    {
+      "node_id": "component:pca2",
+      "name": "latent subspace PC3 (var=0.08)",
+      "type": "component",
+      "level": "W5_code",
+      "context": "PCA component 3, explained variance 0.079.",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "active",
+      "updated_at": "2026-06-20T08:16:02"
+    },
+    {
+      "node_id": "component:pca3",
+      "name": "latent subspace PC4 (var=0.07)",
+      "type": "component",
+      "level": "W5_code",
+      "context": "PCA component 4, explained variance 0.074.",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "active",
+      "updated_at": "2026-06-20T08:16:02"
+    },
+    {
+      "node_id": "method:linear_dynamics",
+      "name": "linear latent dynamics ż≈Az",
+      "type": "method",
+      "level": "W4_implementation",
+      "context": "Latent-SINDy linear fit on consecutive z pairs: one-step R²=0.967, top |eig|=[1.0, 0.998, 0.998].",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "verified",
+      "updated_at": "2026-06-20T08:16:02",
+      "provenance": {
+        "fit": "lstsq",
+        "r2_linear": 0.9669
+      }
+    },
+    {
+      "node_id": "verification:probing_protocol",
+      "name": "probing protocol (Ridge + selectivity)",
+      "type": "verification",
+      "level": "W4_implementation",
+      "context": "80/20 Ridge linear probe + shuffled-target control task; R² reported on held-out test.",
+      "version": 1,
+      "source_pdf": "lewm-reacher",
+      "status": "verified",
+      "updated_at": "2026-06-20T08:16:02",
+      "provenance": {
+        "protocol": "Ridge+control_task"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "src": "method:LeWM-reacher",
+      "relation": "related_to",
+      "tgt": "hyp:latent_encodes_state",
+      "weight": 1.0
+    },
+    {
+      "src": "num:r2:observation[0]",
+      "relation": "related_to",
+      "tgt": "hyp:latent_encodes_state",
+      "weight": 1.0
+    },
+    {
+      "src": "num:r2:observation[1]",
+      "relation": "related_to",
+      "tgt": "hyp:latent_encodes_state",
+      "weight": 1.0
+    },
+    {
+      "src": "num:r2:observation[2]",
+      "relation": "related_to",
+      "tgt": "hyp:latent_encodes_state",
+      "weight": 1.0
+    },
+    {
+      "src": "num:r2:observation[3]",
+      "relation": "related_to",
+      "tgt": "hyp:latent_encodes_state",
+      "weight": 1.0
+    },
+    {
+      "src": "concept:boundary:observation[4]",
+      "relation": "boundary_of",
+      "tgt": "method:LeWM-reacher",
+      "weight": 1.0
+    },
+    {
+      "src": "concept:boundary:observation[5]",
+      "relation": "boundary_of",
+      "tgt": "method:LeWM-reacher",
+      "weight": 1.0
+    },
+    {
+      "src": "num:r2:qpos[0]",
+      "relation": "related_to",
+      "tgt": "hyp:latent_encodes_state",
+      "weight": 1.0
+    },
+    {
+      "src": "num:r2:qpos[1]",
+      "relation": "related_to",
+      "tgt": "hyp:latent_encodes_state",
+      "weight": 1.0
+    },
+    {
+      "src": "concept:boundary:qvel[0]",
+      "relation": "boundary_of",
+      "tgt": "method:LeWM-reacher",
+      "weight": 1.0
+    },
+    {
+      "src": "concept:boundary:qvel[1]",
+      "relation": "boundary_of",
+      "tgt": "method:LeWM-reacher",
+      "weight": 1.0
+    },
+    {
+      "src": "method:LeWM-reacher",
+      "relation": "uses_component",
+      "tgt": "component:pca0",
+      "weight": 1.0
+    },
+    {
+      "src": "method:LeWM-reacher",
+      "relation": "uses_component",
+      "tgt": "component:pca1",
+      "weight": 1.0
+    },
+    {
+      "src": "method:LeWM-reacher",
+      "relation": "uses_component",
+      "tgt": "component:pca2",
+      "weight": 1.0
+    },
+    {
+      "src": "method:LeWM-reacher",
+      "relation": "uses_component",
+      "tgt": "component:pca3",
+      "weight": 1.0
+    },
+    {
+      "src": "verification:probing_protocol",
+      "relation": "validates",
+      "tgt": "hyp:latent_encodes_state",
+      "weight": 1.0
+    }
+  ]
+}

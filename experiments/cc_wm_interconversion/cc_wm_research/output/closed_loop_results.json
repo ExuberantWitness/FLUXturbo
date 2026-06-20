@@ -1,0 +1,65 @@
+{
+  "bidirectional": true,
+  "WM_to_CC": {
+    "n_atoms": 19,
+    "preserve_targets": [
+      "observation[0]",
+      "observation[1]",
+      "observation[2]",
+      "observation[3]",
+      "qpos[0]",
+      "qpos[1]"
+    ],
+    "fix_targets": [
+      "observation[4]",
+      "observation[5]",
+      "qvel[0]",
+      "qvel[1]"
+    ]
+  },
+  "CC_to_WM": {
+    "compiled_from_cc": true,
+    "per_target_auxR2_post_compile": {
+      "observation[0]": 0.91,
+      "observation[1]": 0.921,
+      "observation[2]": 0.531,
+      "observation[3]": 0.705,
+      "observation[4]": 0.196,
+      "observation[5]": -0.213,
+      "qpos[0]": 0.932,
+      "qpos[1]": 0.76,
+      "qvel[0]": 0.107,
+      "qvel[1]": -0.225
+    },
+    "note": "preserve targets → high aux-R² (encoding kept/enforced); fix targets → low/≈0 aux-R² if architecturally unobservable"
+  },
+  "fix_target_outcome": {
+    "observation[4]": {
+      "R2_pre": 0.077,
+      "R2_post": 0.08
+    },
+    "observation[5]": {
+      "R2_pre": 0.005,
+      "R2_post": 0.004
+    },
+    "qvel[0]": {
+      "R2_pre": 0.204,
+      "R2_post": 0.205
+    },
+    "qvel[1]": {
+      "R2_pre": -0.029,
+      "R2_post": -0.024
+    }
+  },
+  "fidelity": {
+    "info_layer_cosine_R2": 1.0,
+    "behavioral_pred_mse": {
+      "pre": 0.79415,
+      "post": 0.57231,
+      "delta": -0.22185
+    },
+    "mi_gap_dI": -32.2217,
+    "latent_wasserstein_W1": 0.3905,
+    "dpi_note": "ΔI ≥ 0 by data-processing inequality; goal is to bound it within task tolerance."
+  }
+}

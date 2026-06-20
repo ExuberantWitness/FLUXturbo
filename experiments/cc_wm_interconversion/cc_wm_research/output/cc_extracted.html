@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ccchain · WM→CC</title>
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; }
+#header { padding: 14px 24px; background: linear-gradient(135deg,#1e293b,#0f172a); border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+h1 { font-size: 20px; color: #60a5fa; }
+h1 .sub { font-size: 12px; color: #94a3b8; font-weight: 400; }
+.stat { font-size: 12px; color: #94a3b8; background: #0f172a; padding: 4px 11px; border-radius: 6px; border: 1px solid #1e293b; }
+#cards { display: flex; gap: 14px; padding: 16px 24px; overflow-x: auto; background: #0f172a; border-bottom: 1px solid #1e293b; }
+.card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 14px 16px; min-width: 230px; flex-shrink: 0; }
+.card-title { font-size: 12px; color: #cbd5e1; font-weight: 600; margin-bottom: 10px; word-break: break-all; }
+.cpr-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+.cpr-num { font-size: 30px; font-weight: 700; line-height: 1; }
+.cpr-label { font-size: 10px; color: #94a3b8; line-height: 1.3; }
+.muted { color: #64748b; }
+.ok-text { color: #34d399; }
+.fail-text { color: #f87171; }
+.bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: #0f172a; margin-bottom: 8px; }
+.bar-seg { height: 100%; transition: width .3s; }
+.card-stats { display: flex; gap: 10px; font-size: 10px; color: #94a3b8; flex-wrap: wrap; margin-bottom: 8px; }
+.chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.chip { font-size: 9px; padding: 2px 7px; border-radius: 4px; font-weight: 600; }
+.chip-ok { background: #064e3b; color: #34d399; }
+.chip-fail { background: #4c0519; color: #f87171; }
+#controls { padding: 8px 24px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.btn { padding: 5px 13px; border-radius: 6px; border: 1px solid #334155; background: #0f172a; color: #cbd5e1; cursor: pointer; font-size: 11px; transition: all .15s; }
+.btn:hover { background: #334155; }
+.btn.active { filter: brightness(1.3); }
+#legend { display: flex; gap: 12px; align-items: center; margin-left: auto; flex-wrap: wrap; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #94a3b8; white-space: nowrap; }
+.legend-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 8px; border-left: 1px solid #334155; }
+.legend-group:first-child { border-left: none; }
+.lg-title { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: #64748b; }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.ring { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; border: 2px solid; background: transparent; }
+#wrapper { display: flex; height: calc(100vh - 290px); min-height: 420px; }
+#mynetwork { flex: 1; background: #0f172a; }
+#info-panel { width: 360px; background: #1e293b; border-left: 1px solid #334155; padding: 18px; overflow-y: auto; font-size: 13px; line-height: 1.6; }
+#info-panel h3 { color: #60a5fa; font-size: 14px; margin-bottom: 4px; word-break: break-word; }
+#info-panel .meta { color: #94a3b8; font-size: 11px; margin: 3px 0; }
+.tag { display: inline-block; border-radius: 4px; padding: 2px 8px; font-size: 10px; font-weight: 600; margin-right: 4px; margin-bottom: 3px; }
+.section-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #64748b; margin: 12px 0 4px; }
+.check-row { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px; background: #0f172a; margin-bottom: 4px; font-size: 11px; }
+.check-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.check-name { font-weight: 600; color: #cbd5e1; min-width: 28px; }
+.check-status { font-size: 10px; padding: 1px 6px; border-radius: 3px; }
+.st-pass { background: #064e3b; color: #34d399; }
+.st-fail { background: #4c0519; color: #f87171; }
+.st-skip { background: #1e293b; color: #64748b; }
+.body-box { color: #cbd5e1; font-size: 11px; background: #0f172a; padding: 8px; border-radius: 6px; max-height: 110px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; }
+.empty { color: #64748b; font-style: italic; padding: 20px; }
+footer { position: fixed; bottom: 4px; left: 12px; color: #334155; font-size: 10px; }
+</style>
+</head>
+<body>
+<div id="header">
+  <h1>ccchain · WM→CC <span class="sub">Chain-of-Evidence integrity (I1/I2/I3/I4)</span></h1>
+  <span class="stat">Papers: 0</span>
+  <span class="stat">Atoms: 19</span>
+  <span class="stat">Edges: 16</span>
+</div>
+<div id="cards"><div class="empty">No audit reports.</div></div>
+<div id="controls">
+  <span class="muted" style="font-size:10px">Filter by status:</span>
+  <button class="btn status-btn" data-status="active" style="border-color:#60a5fa;color:#60a5fa">Active</button><button class="btn status-btn" data-status="low_reliability" style="border-color:#f87171;color:#f87171">Low Reliability</button><button class="btn status-btn" data-status="needs_review" style="border-color:#facc15;color:#facc15">Needs Review</button><button class="btn status-btn" data-status="verified" style="border-color:#34d399;color:#34d399">Verified</button>
+  <button class="btn" onclick="selectAll()">Show All</button>
+  <button class="btn" onclick="fitGraph()">Fit</button>
+  <div id="legend"><div class="legend-group"><span class="lg-title">fill=status</span><div class="legend-item"><div class="dot" style="background:#10b981"></div>Verified</div><div class="legend-item"><div class="dot" style="background:#64748b"></div>Skipped</div><div class="legend-item"><div class="dot" style="background:#f59e0b"></div>Low Confidence</div><div class="legend-item"><div class="dot" style="background:#ef4444"></div>Low Reliability</div><div class="legend-item"><div class="dot" style="background:#a855f7"></div>Demoted</div><div class="legend-item"><div class="dot" style="background:#3b82f6"></div>Active</div><div class="legend-item"><div class="dot" style="background:#eab308"></div>Needs Review</div></div><div class="legend-group"><span class="lg-title">border=level (spec chain W2→W3→W4→W5)</span><div class="legend-item"><div class="ring" style="border-color:#dc2626"></div>W1 Problem</div><div class="legend-item"><div class="ring" style="border-color:#f59e0b"></div>W2 Direction</div><div class="legend-item"><div class="ring" style="border-color:#a855f7"></div>W3 Approach</div><div class="legend-item"><div class="ring" style="border-color:#3b82f6"></div>W4 Implementation</div><div class="legend-item"><div class="ring" style="border-color:#10b981"></div>W5 Code</div></div></div>
+</div>
+<div id="wrapper">
+  <div id="mynetwork"></div>
+  <div id="info-panel">
+    <h3>Atom Detail</h3>
+    <div class="meta muted">Click a node to inspect its CoE check verdicts.</div>
+    <div id="info-content"></div>
+  </div>
+</div>
+<footer>ccchain v0.3 · CoE audit</footer>
+
+<script>
+const data = {"nodes": [{"id": "bottleneck:representational_limitation", "label": "representational_limitation: qvel[1]", "group": "low_reliability", "level": 1, "cc_level": "W2_direction", "type": "bottleneck", "status": "low_reliability", "size": 22, "title": "[W2] representational_limitation: qvel[1]\nbottleneck \u00b7 low_reliability"}, {"id": "method:LeWM-reacher", "label": "LeWM-reacher latent encoder", "group": "verified", "level": 2, "cc_level": "W3_approach", "type": "method", "status": "verified", "size": 16, "title": "[W3] LeWM-reacher latent encoder\nmethod \u00b7 verified"}, {"id": "hyp:latent_encodes_state", "label": "reacher latent linearly encodes kinematic ", "group": "needs_review", "level": 2, "cc_level": "W3_approach", "type": "hypothesis", "status": "needs_review", "size": 16, "title": "[W3] reacher latent linearly encodes kinematic \nhypothesis \u00b7 needs_review"}, {"id": "concept:boundary:observation[4]", "label": "encoding boundary: observation[4]", "group": "low_reliability", "level": 2, "cc_level": "W3_approach", "type": "concept", "status": "low_reliability", "size": 16, "title": "[W3] encoding boundary: observation[4]\nconcept \u00b7 low_reliability"}, {"id": "concept:boundary:observation[5]", "label": "encoding boundary: observation[5]", "group": "low_reliability", "level": 2, "cc_level": "W3_approach", "type": "concept", "status": "low_reliability", "size": 16, "title": "[W3] encoding boundary: observation[5]\nconcept \u00b7 low_reliability"}, {"id": "concept:boundary:qvel[0]", "label": "encoding boundary: qvel[0]", "group": "low_reliability", "level": 2, "cc_level": "W3_approach", "type": "concept", "status": "low_reliability", "size": 16, "title": "[W3] encoding boundary: qvel[0]\nconcept \u00b7 low_reliability"}, {"id": "concept:boundary:qvel[1]", "label": "encoding boundary: qvel[1]", "group": "low_reliability", "level": 2, "cc_level": "W3_approach", "type": "concept", "status": "low_reliability", "size": 16, "title": "[W3] encoding boundary: qvel[1]\nconcept \u00b7 low_reliability"}, {"id": "num:r2:observation[0]", "label": "R\u00b2(z\u2192observation[0])=0.99", "group": "verified", "level": 3, "cc_level": "W4_implementation", "type": "numerical", "status": "verified", "size": 12, "title": "[W4] R\u00b2(z\u2192observation[0])=0.99\nnumerical \u00b7 verified"}, {"id": "num:r2:observation[1]", "label": "R\u00b2(z\u2192observation[1])=0.99", "group": "verified", "level": 3, "cc_level": "W4_implementation", "type": "numerical", "status": "verified", "size": 12, "title": "[W4] R\u00b2(z\u2192observation[1])=0.99\nnumerical \u00b7 verified"}, {"id": "num:r2:observation[2]", "label": "R\u00b2(z\u2192observation[2])=0.98", "group": "verified", "level": 3, "cc_level": "W4_implementation", "type": "numerical", "status": "verified", "size": 12, "title": "[W4] R\u00b2(z\u2192observation[2])=0.98\nnumerical \u00b7 verified"}, {"id": "num:r2:observation[3]", "label": "R\u00b2(z\u2192observation[3])=0.98", "group": "verified", "level": 3, "cc_level": "W4_implementation", "type": "numerical", "status": "verified", "size": 12, "title": "[W4] R\u00b2(z\u2192observation[3])=0.98\nnumerical \u00b7 verified"}, {"id": "num:r2:qpos[0]", "label": "R\u00b2(z\u2192qpos[0])=0.99", "group": "verified", "level": 3, "cc_level": "W4_implementation", "type": "numerical", "status": "verified", "size": 12, "title": "[W4] R\u00b2(z\u2192qpos[0])=0.99\nnumerical \u00b7 verified"}, {"id": "num:r2:qpos[1]", "label": "R\u00b2(z\u2192qpos[1])=0.99", "group": "verified", "level": 3, "cc_level": "W4_implementation", "type": "numerical", "status": "verified", "size": 12, "title": "[W4] R\u00b2(z\u2192qpos[1])=0.99\nnumerical \u00b7 verified"}, {"id": "method:linear_dynamics", "label": "linear latent dynamics \u017c\u2248Az", "group": "verified", "level": 3, "cc_level": "W4_implementation", "type": "method", "status": "verified", "size": 12, "title": "[W4] linear latent dynamics \u017c\u2248Az\nmethod \u00b7 verified"}, {"id": "verification:probing_protocol", "label": "probing protocol (Ridge + selectivity)", "group": "verified", "level": 3, "cc_level": "W4_implementation", "type": "verification", "status": "verified", "size": 12, "title": "[W4] probing protocol (Ridge + selectivity)\nverification \u00b7 verified"}, {"id": "component:pca0", "label": "latent subspace PC1 (var=0.12)", "group": "active", "level": 4, "cc_level": "W5_code", "type": "component", "status": "active", "size": 9, "title": "[W5] latent subspace PC1 (var=0.12)\ncomponent \u00b7 active"}, {"id": "component:pca1", "label": "latent subspace PC2 (var=0.09)", "group": "active", "level": 4, "cc_level": "W5_code", "type": "component", "status": "active", "size": 9, "title": "[W5] latent subspace PC2 (var=0.09)\ncomponent \u00b7 active"}, {"id": "component:pca2", "label": "latent subspace PC3 (var=0.08)", "group": "active", "level": 4, "cc_level": "W5_code", "type": "component", "status": "active", "size": 9, "title": "[W5] latent subspace PC3 (var=0.08)\ncomponent \u00b7 active"}, {"id": "component:pca3", "label": "latent subspace PC4 (var=0.07)", "group": "active", "level": 4, "cc_level": "W5_code", "type": "component", "status": "active", "size": 9, "title": "[W5] latent subspace PC4 (var=0.07)\ncomponent \u00b7 active"}], "edges": [{"from": "method:LeWM-reacher", "to": "hyp:latent_encodes_state", "label": "related_to", "relation": "related_to", "color": {"color": "#475569", "highlight": "#475569", "hover": "#475569"}, "dashes": false, "width": 0.5}, {"from": "num:r2:observation[0]", "to": "hyp:latent_encodes_state", "label": "related_to", "relation": "related_to", "color": {"color": "#475569", "highlight": "#475569", "hover": "#475569"}, "dashes": false, "width": 0.5}, {"from": "num:r2:observation[1]", "to": "hyp:latent_encodes_state", "label": "related_to", "relation": "related_to", "color": {"color": "#475569", "highlight": "#475569", "hover": "#475569"}, "dashes": false, "width": 0.5}, {"from": "num:r2:observation[2]", "to": "hyp:latent_encodes_state", "label": "related_to", "relation": "related_to", "color": {"color": "#475569", "highlight": "#475569", "hover": "#475569"}, "dashes": false, "width": 0.5}, {"from": "num:r2:observation[3]", "to": "hyp:latent_encodes_state", "label": "related_to", "relation": "related_to", "color": {"color": "#475569", "highlight": "#475569", "hover": "#475569"}, "dashes": false, "width": 0.5}, {"from": "concept:boundary:observation[4]", "to": "method:LeWM-reacher", "label": "boundary_of", "relation": "boundary_of", "color": {"color": "#475569", "highlight": "#475569", "hover": "#475569"}, "dashes": false, "width": 0.5}, {"from": "concept:boundary:observation[5]", "to": "method:LeWM-reacher", "label": "boundary_of", "relation": "boundary_of", "color": {"color": "#475569", "highlight": "#475569", "hover": "#475569"}, "dashes": false, "width": 0.5}, {"from": "num:r2:qpos[0]", "to": "hyp:latent_encodes_state", "label": "related_to", "relation": "related_to", "color": {"color": "#475569", "highlight": "#475569", "hover": "#475569"}, "dashes": false, "width": 0.5}, {"from": "num:r2:qpos[1]", "to": "hyp:latent_encodes_state", "label": "related_to", "relation": "related_to", "color": {"color": "#475569", "highlight": "#475569", "hover": "#475569"}, "dashes": false, "width": 0.5}, {"from": "concept:boundary:qvel[0]", "to": "method:LeWM-reacher", "label": "boundary_of", "relation": "boundary_of", "color": {"color": "#475569", "highlight": "#475569", "hover": "#475569"}, "dashes": false, "width": 0.5}, {"from": "concept:boundary:qvel[1]", "to": "method:LeWM-reacher", "label": "boundary_of", "relation": "boundary_of", "color": {"color": "#475569", "highlight": "#475569", "hover": "#475569"}, "dashes": false, "width": 0.5}, {"from": "method:LeWM-reacher", "to": "component:pca0", "label": "uses_component", "relation": "uses_component", "color": {"color": "#64748b", "highlight": "#64748b", "hover": "#64748b"}, "dashes": false, "width": 0.6}, {"from": "method:LeWM-reacher", "to": "component:pca1", "label": "uses_component", "relation": "uses_component", "color": {"color": "#64748b", "highlight": "#64748b", "hover": "#64748b"}, "dashes": false, "width": 0.6}, {"from": "method:LeWM-reacher", "to": "component:pca2", "label": "uses_component", "relation": "uses_component", "color": {"color": "#64748b", "highlight": "#64748b", "hover": "#64748b"}, "dashes": false, "width": 0.6}, {"from": "method:LeWM-reacher", "to": "component:pca3", "label": "uses_component", "relation": "uses_component", "color": {"color": "#64748b", "highlight": "#64748b", "hover": "#64748b"}, "dashes": false, "width": 0.6}, {"from": "verification:probing_protocol", "to": "hyp:latent_encodes_state", "label": "validates", "relation": "validates", "color": {"color": "#475569", "highlight": "#475569", "hover": "#475569"}, "dashes": false, "width": 0.5}], "atom_meta": {"bottleneck:representational_limitation": {"name": "representational_limitation: qvel[1]", "type": "bottleneck", "level": "W2_direction", "status": "low_reliability", "source_pdf": "lewm-reacher", "context": "Latent cannot encode qvel[1] (R\u00b2=-0.029). Candidate for CC\u2192WM compile-back (auxiliary decode head).", "provenance": {"worst_target": "qvel[1]", "r2": -0.0292}, "checks": {}}, "method:LeWM-reacher": {"name": "LeWM-reacher latent encoder", "type": "method", "level": "W3_approach", "status": "verified", "source_pdf": "lewm-reacher", "context": "JEPA world model: ViT-Tiny encoder (192-d) + ARPredictor. Latent z=encode(pixels) is the physical-perception layer.", "provenance": {"arch": "ViT-Tiny+ARPredictor", "params_M": 18.0}, "checks": {}}, "hyp:latent_encodes_state": {"name": "reacher latent linearly encodes kinematic state", "type": "hypothesis", "level": "W3_approach", "status": "needs_review", "source_pdf": "lewm-reacher", "context": "Probing hypothesis: z linearly decodable into qpos/qvel/obs.", "provenance": {}, "checks": {}}, "concept:boundary:observation[4]": {"name": "encoding boundary: observation[4]", "type": "concept", "level": "W3_approach", "status": "low_reliability", "source_pdf": "lewm-reacher", "context": "Latent FAILS to linearly encode observation[4] (R\u00b2=0.077) \u2014 representational limitation.", "provenance": {"score": 0.0769, "metric": "test_R2", "target": "observation[4]"}, "checks": {}}, "concept:boundary:observation[5]": {"name": "encoding boundary: observation[5]", "type": "concept", "level": "W3_approach", "status": "low_reliability", "source_pdf": "lewm-reacher", "context": "Latent FAILS to linearly encode observation[5] (R\u00b2=0.005) \u2014 representational limitation.", "provenance": {"score": 0.005, "metric": "test_R2", "target": "observation[5]"}, "checks": {}}, "concept:boundary:qvel[0]": {"name": "encoding boundary: qvel[0]", "type": "concept", "level": "W3_approach", "status": "low_reliability", "source_pdf": "lewm-reacher", "context": "Latent FAILS to linearly encode qvel[0] (R\u00b2=0.204) \u2014 representational limitation.", "provenance": {"score": 0.2037, "metric": "test_R2", "target": "qvel[0]"}, "checks": {}}, "concept:boundary:qvel[1]": {"name": "encoding boundary: qvel[1]", "type": "concept", "level": "W3_approach", "status": "low_reliability", "source_pdf": "lewm-reacher", "context": "Latent FAILS to linearly encode qvel[1] (R\u00b2=-0.029) \u2014 representational limitation.", "provenance": {"score": -0.0292, "metric": "test_R2", "target": "qvel[1]"}, "checks": {}}, "num:r2:observation[0]": {"name": "R\u00b2(z\u2192observation[0])=0.99", "type": "numerical", "level": "W4_implementation", "status": "verified", "source_pdf": "lewm-reacher", "context": "Linear probe: latent z linearly encodes observation[0] (test R\u00b2=0.988, control R\u00b2=-0.072, selectivity=1.060, n=2500).", "provenance": {"score": 0.9882, "metric": "test_R2", "target": "observation[0]", "control_R2": -0.0718}, "checks": {}}, "num:r2:observation[1]": {"name": "R\u00b2(z\u2192observation[1])=0.99", "type": "numerical", "level": "W4_implementation", "status": "verified", "source_pdf": "lewm-reacher", "context": "Linear probe: latent z linearly encodes observation[1] (test R\u00b2=0.987, control R\u00b2=-0.064, selectivity=1.051, n=2500).", "provenance": {"score": 0.9869, "metric": "test_R2", "target": "observation[1]", "control_R2": -0.0637}, "checks": {}}, "num:r2:observation[2]": {"name": "R\u00b2(z\u2192observation[2])=0.98", "type": "numerical", "level": "W4_implementation", "status": "verified", "source_pdf": "lewm-reacher", "context": "Linear probe: latent z linearly encodes observation[2] (test R\u00b2=0.975, control R\u00b2=-0.097, selectivity=1.072, n=2500).", "provenance": {"score": 0.9753, "metric": "test_R2", "target": "observation[2]", "control_R2": -0.0966}, "checks": {}}, "num:r2:observation[3]": {"name": "R\u00b2(z\u2192observation[3])=0.98", "type": "numerical", "level": "W4_implementation", "status": "verified", "source_pdf": "lewm-reacher", "context": "Linear probe: latent z linearly encodes observation[3] (test R\u00b2=0.983, control R\u00b2=-0.073, selectivity=1.056, n=2500).", "provenance": {"score": 0.983, "metric": "test_R2", "target": "observation[3]", "control_R2": -0.0732}, "checks": {}}, "num:r2:qpos[0]": {"name": "R\u00b2(z\u2192qpos[0])=0.99", "type": "numerical", "level": "W4_implementation", "status": "verified", "source_pdf": "lewm-reacher", "context": "Linear probe: latent z linearly encodes qpos[0] (test R\u00b2=0.990, control R\u00b2=-0.095, selectivity=1.085, n=2500).", "provenance": {"score": 0.9902, "metric": "test_R2", "target": "qpos[0]", "control_R2": -0.0952}, "checks": {}}, "num:r2:qpos[1]": {"name": "R\u00b2(z\u2192qpos[1])=0.99", "type": "numerical", "level": "W4_implementation", "status": "verified", "source_pdf": "lewm-reacher", "context": "Linear probe: latent z linearly encodes qpos[1] (test R\u00b2=0.989, control R\u00b2=-0.059, selectivity=1.048, n=2500).", "provenance": {"score": 0.9888, "metric": "test_R2", "target": "qpos[1]", "control_R2": -0.0592}, "checks": {}}, "method:linear_dynamics": {"name": "linear latent dynamics \u017c\u2248Az", "type": "method", "level": "W4_implementation", "status": "verified", "source_pdf": "lewm-reacher", "context": "Latent-SINDy linear fit on consecutive z pairs: one-step R\u00b2=0.967, top |eig|=[1.0, 0.998, 0.998].", "provenance": {"fit": "lstsq", "r2_linear": 0.9669}, "checks": {}}, "verification:probing_protocol": {"name": "probing protocol (Ridge + selectivity)", "type": "verification", "level": "W4_implementation", "status": "verified", "source_pdf": "lewm-reacher", "context": "80/20 Ridge linear probe + shuffled-target control task; R\u00b2 reported on held-out test.", "provenance": {"protocol": "Ridge+control_task"}, "checks": {}}, "component:pca0": {"name": "latent subspace PC1 (var=0.12)", "type": "component", "level": "W5_code", "status": "active", "source_pdf": "lewm-reacher", "context": "PCA component 1, explained variance 0.125.", "provenance": {}, "checks": {}}, "component:pca1": {"name": "latent subspace PC2 (var=0.09)", "type": "component", "level": "W5_code", "status": "active", "source_pdf": "lewm-reacher", "context": "PCA component 2, explained variance 0.087.", "provenance": {}, "checks": {}}, "component:pca2": {"name": "latent subspace PC3 (var=0.08)", "type": "component", "level": "W5_code", "status": "active", "source_pdf": "lewm-reacher", "context": "PCA component 3, explained variance 0.079.", "provenance": {}, "checks": {}}, "component:pca3": {"name": "latent subspace PC4 (var=0.07)", "type": "component", "level": "W5_code", "status": "active", "source_pdf": "lewm-reacher", "context": "PCA component 4, explained variance 0.074.", "provenance": {}, "checks": {}}}, "check_labels": {"I1": "Score Verification", "I2": "Specification Violation", "I3": "Reference Verification", "I4": "Method-Code Alignment"}};
+const statusColor = {"verified": "#10b981", "skipped": "#64748b", "low_confidence": "#f59e0b", "low_reliability": "#ef4444", "demoted": "#a855f7", "active": "#3b82f6", "needs_review": "#eab308"};
+const levelBorder = {"W1_problem": "#dc2626", "W2_direction": "#f59e0b", "W3_approach": "#a855f7", "W4_implementation": "#3b82f6", "W5_code": "#10b981"};
+const checkLabels = data.check_labels;
+
+const nodes = new vis.DataSet(data.nodes.map(n => ({
+  ...n,
+  borderWidth: 3,
+  color: { background: statusColor[n.status] || '#3b82f6',
+            border: levelBorder[n.cc_level] || '#0f172a',
+            highlight: { background: statusColor[n.status] || '#3b82f6', border: '#f1f5f9' },
+            hover: { background: statusColor[n.status] || '#3b82f6', border: '#e2e8f0' } },
+})));
+const edges = new vis.DataSet(data.edges);
+
+const options = {
+  nodes: { shape: 'dot', font: { size: 9, color: '#cbd5e1', strokeWidth: 2, strokeColor: '#0f172a' },
+            borderWidth: 1, borderWidthSelected: 3, shadow: { enabled: true, color: 'rgba(0,0,0,.5)', size: 6 } },
+  edges: { font: { size: 7, color: '#475569', strokeWidth: 2, strokeColor: '#0f172a' },
+            arrows: { to: { enabled: true, scaleFactor: 0.4 } }, smooth: { type: 'curvedCW', roundness: 0.12 } },
+  physics: { enabled: true, solver: 'hierarchicalRepulsion',
+              hierarchicalRepulsion: { centralGravity: 0.0, springLength: 180, springConstant: 0.01, nodeDistance: 130, damping: 0.09 },
+              stabilization: { iterations: 200 } },
+  layout: { hierarchical: { enabled: true, direction: 'UD', sortMethod: 'directed',
+              levelSeparation: 200, nodeSpacing: 150, treeSpacing: 40, blockShifting: true, edgeMinimization: true } },
+  interaction: { hover: true, tooltipDelay: 120, zoomView: true, dragView: true },
+};
+const network = new vis.Network(document.getElementById('mynetwork'), { nodes, edges }, options);
+
+// ── Status filter ────────────────────────────────────────────────────
+const hiddenStatus = new Set();
+document.querySelectorAll('.status-btn').forEach(btn => {
+  btn.classList.add('active');
+  btn.addEventListener('click', () => {
+    const s = btn.dataset.status;
+    if (hiddenStatus.has(s)) { hiddenStatus.delete(s); btn.classList.add('active'); }
+    else { hiddenStatus.add(s); btn.classList.remove('active'); }
+    data.nodes.forEach(n => {
+      nodes.update({ id: n.id, hidden: hiddenStatus.has(n.status) });
+    });
+  });
+});
+function selectAll() {
+  hiddenStatus.clear();
+  document.querySelectorAll('.status-btn').forEach(b => b.classList.add('active'));
+  data.nodes.forEach(n => nodes.update({ id: n.id, hidden: false }));
+}
+function fitGraph() { network.fit({ animation: true }); }
+
+// ── Click → detail panel ─────────────────────────────────────────────
+network.on('click', params => {
+  if (params.nodes.length === 0) return;
+  const nid = params.nodes[0];
+  const meta = data.atom_meta[nid];
+  if (!meta) return;
+  const c = document.getElementById('info-content');
+  const lvlTag = '<span class="tag" style="background:#334155;color:#cbd5e1">' + meta.level + '</span>';
+  const typeTag = '<span class="tag" style="background:#1e293b;color:#94a3b8">' + meta.type + '</span>';
+  const stCol = statusColor[meta.status] || '#3b82f6';
+  const stTag = '<span class="tag" style="background:' + stCol + ';color:#0f172a">' + meta.status + '</span>';
+  let h = '<div style="margin-bottom:6px">' + lvlTag + typeTag + stTag + '</div>';
+  h += '<h3>' + (meta.name || nid) + '</h3>';
+  if (meta.source_pdf) h += '<div class="meta">source: ' + meta.source_pdf + '</div>';
+  h += '<div class="section-label">Context</div><div class="body-box">' + esc(meta.context) + '</div>';
+  const chk = meta.checks || {};
+  const keys = Object.keys(chk);
+  if (keys.length) {
+    h += '<div class="section-label">CoE Checks</div>';
+    keys.sort().forEach(k => {
+      const r = chk[k];
+      const st = r.status || 'skipped';
+      const col = st === 'passed' ? '#10b981' : (st === 'failed' ? '#ef4444' : '#64748b');
+      const cls = st === 'passed' ? 'st-pass' : (st === 'failed' ? 'st-fail' : 'st-skip');
+      h += '<div class="check-row"><div class="check-dot" style="background:' + col + '"></div>' +
+           '<span class="check-name">' + k + '</span>' +
+           '<span class="check-status ' + cls + '">' + st + '</span>' +
+           '<span style="color:#64748b;font-size:10px">' + esc(checkLabels[k] || '') + '</span></div>';
+      const detail = r.reasoning || r.reason || '';
+      if (detail) h += '<div class="meta" style="margin-left:16px">' + esc(String(detail)) + '</div>';
+    });
+  } else {
+    h += '<div class="section-label">CoE Checks</div><div class="meta muted">None applicable for this atom type.</div>';
+  }
+  const pv = meta.provenance || {};
+  if (Object.keys(pv).length) {
+    h += '<div class="section-label">Provenance</div><div class="body-box">' + esc(JSON.stringify(pv, null, 1)) + '</div>';
+  }
+  c.innerHTML = h;
+});
+
+function esc(s) { return String(s).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+</script>
+</body>
+</html>

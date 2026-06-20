@@ -1,0 +1,204 @@
+{
+  "z_shape": [
+    2500,
+    192
+  ],
+  "extraction": {
+    "probes": [
+      {
+        "name": "observation[0]",
+        "r2": 0.9882485341267486,
+        "ctrl_r2": -0.07176145766244657,
+        "selectivity": 1.0600099917891952,
+        "n": 2500
+      },
+      {
+        "name": "observation[1]",
+        "r2": 0.9868771181779022,
+        "ctrl_r2": -0.06373816880350969,
+        "selectivity": 1.050615286981412,
+        "n": 2500
+      },
+      {
+        "name": "observation[2]",
+        "r2": 0.9752560334421967,
+        "ctrl_r2": -0.0966490498373982,
+        "selectivity": 1.0719050832795949,
+        "n": 2500
+      },
+      {
+        "name": "observation[3]",
+        "r2": 0.983012044660682,
+        "ctrl_r2": -0.07321102289883519,
+        "selectivity": 1.0562230675595172,
+        "n": 2500
+      },
+      {
+        "name": "observation[4]",
+        "r2": 0.07691502758369395,
+        "ctrl_r2": -0.11179016501093608,
+        "selectivity": 0.18870519259463003,
+        "n": 2500
+      },
+      {
+        "name": "observation[5]",
+        "r2": 0.005019339324841887,
+        "ctrl_r2": -0.03696044258534359,
+        "selectivity": 0.041979781910185476,
+        "n": 2500
+      },
+      {
+        "name": "qpos[0]",
+        "r2": 0.9902072470954111,
+        "ctrl_r2": -0.09518305964568086,
+        "selectivity": 1.085390306741092,
+        "n": 2500
+      },
+      {
+        "name": "qpos[1]",
+        "r2": 0.9888144642693103,
+        "ctrl_r2": -0.059217827579761906,
+        "selectivity": 1.048032291849072,
+        "n": 2500
+      },
+      {
+        "name": "qvel[0]",
+        "r2": 0.20366038082922067,
+        "ctrl_r2": -0.023733034774898742,
+        "selectivity": 0.2273934156041194,
+        "n": 2500
+      },
+      {
+        "name": "qvel[1]",
+        "r2": -0.02923375187733024,
+        "ctrl_r2": -0.0642006476689001,
+        "selectivity": 0.03496689579156986,
+        "n": 2500
+      }
+    ],
+    "das": {
+      "qpos[0]": {
+        "iia": 0.9903105754023774,
+        "iia_null": -1.107873102454631,
+        "causal_effect": 2.0981836778570084,
+        "name": "qpos[0]",
+        "causal": true
+      },
+      "qpos[1]": {
+        "iia": 0.9887882041397877,
+        "iia_null": -0.9359192450075686,
+        "causal_effect": 1.9247074491473564,
+        "name": "qpos[1]",
+        "causal": true
+      },
+      "qvel[0]": {
+        "iia": 0.32679838533493377,
+        "iia_null": -0.18235745843806517,
+        "causal_effect": 0.5091558437729989,
+        "name": "qvel[0]",
+        "causal": true
+      },
+      "qvel[1]": {
+        "iia": 0.05863819411532212,
+        "iia_null": -0.1684974825684895,
+        "causal_effect": 0.22713567668381163,
+        "name": "qvel[1]",
+        "causal": false
+      },
+      "observation[0]": {
+        "iia": 0.9904621882257985,
+        "iia_null": -0.9822942554843883,
+        "causal_effect": 1.9727564437101868,
+        "name": "observation[0]",
+        "causal": true
+      },
+      "observation[1]": {
+        "iia": 0.9898148668382961,
+        "iia_null": -0.9093024018728284,
+        "causal_effect": 1.8991172687111244,
+        "name": "observation[1]",
+        "causal": true
+      },
+      "observation[2]": {
+        "iia": 0.9786996891274445,
+        "iia_null": -1.0231231009869228,
+        "causal_effect": 2.0018227901143675,
+        "name": "observation[2]",
+        "causal": true
+      },
+      "observation[3]": {
+        "iia": 0.9879694017499772,
+        "iia_null": -0.942516126336987,
+        "causal_effect": 1.9304855280869642,
+        "name": "observation[3]",
+        "causal": true
+      },
+      "observation[4]": {
+        "iia": 0.29177842901492235,
+        "iia_null": -0.20044678710066033,
+        "causal_effect": 0.4922252161155827,
+        "name": "observation[4]",
+        "causal": true
+      },
+      "observation[5]": {
+        "iia": 0.07648181058029835,
+        "iia_null": -0.2977963952054632,
+        "causal_effect": 0.37427820578576154,
+        "name": "observation[5]",
+        "causal": true
+      }
+    },
+    "dynamics": {
+      "A_shape": [
+        192,
+        192
+      ],
+      "r2_linear": 0.9668524791949832
+    },
+    "n_faithfulness_metrics": 7,
+    "n_atoms": 19
+  },
+  "roundtrip": {
+    "info_layer_cosine_R2": 1.0,
+    "behavioral_pred_mse": {
+      "pre": 0.55449,
+      "post": 0.55449,
+      "delta": 0.0
+    },
+    "mi_gap_dI": -32.8498,
+    "latent_wasserstein_W1": 0.389,
+    "dpi_note": "ΔI ≥ 0 by data-processing inequality; goal is to bound it within task tolerance."
+  },
+  "controlled": {
+    "compilable_target": "sin(5·qpos) [observable]",
+    "compilable_auxR2": 0.639,
+    "uncompilable_target": "qvel [unobservable single-frame]",
+    "uncompilable_auxR2": 0.054,
+    "qvel_linearR2_pre": 0.075
+  },
+  "common_substrate": {
+    "sim_side": {
+      "pred_mse": 0.55449,
+      "encoded_quantities": [
+        "observation[0]",
+        "observation[1]",
+        "observation[2]",
+        "observation[3]",
+        "qpos[0]",
+        "qpos[1]"
+      ],
+      "bottleneck_quantities": [
+        "observation[4]",
+        "observation[5]",
+        "qvel[0]",
+        "qvel[1]"
+      ]
+    },
+    "write_side": {
+      "hypothesis_from_CC": "WM latent fails to encode observation[4] (representational_limitation)",
+      "evaluated_by_WM": "probe R² = 0.077",
+      "written_conclusion": "Bottleneck confirmed; classified as architectural (unobservable single-frame) → motivates temporal/memory mechanism."
+    },
+    "shared_CC_WM_instance": true
+  }
+}
