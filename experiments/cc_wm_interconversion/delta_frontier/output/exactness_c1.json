@@ -1,0 +1,82 @@
+{
+  "C1_synthetic_delta0": {
+    "composite": 0.0,
+    "max_delta_iia": 0.0,
+    "exactness_pass": true,
+    "per_claim": [
+      {
+        "name": "z[0][0]",
+        "delta_iia": 1.6004247871403976e-07,
+        "iia": 0.9999998399575213,
+        "iia_null_mean": -0.3622649140786979,
+        "iia_null_std": 0.3631398357008611,
+        "dose_monotonicity": 0.6666666666666666,
+        "n": 2500,
+        "r2_probe": 0.9999997380968292
+      },
+      {
+        "name": "z[1][0]",
+        "delta_iia": 1.6075964304196333e-07,
+        "iia": 0.999999839240357,
+        "iia_null_mean": -0.7495097240004747,
+        "iia_null_std": 0.29355401042673934,
+        "dose_monotonicity": 0.6666666666666666,
+        "n": 2500,
+        "r2_probe": 0.9999997377105635
+      },
+      {
+        "name": "z[2][0]",
+        "delta_iia": 1.5929982177809165e-07,
+        "iia": 0.9999998407001782,
+        "iia_null_mean": -0.8774291067927565,
+        "iia_null_std": 0.3783106403845157,
+        "dose_monotonicity": 0.6666666666666666,
+        "n": 2500,
+        "r2_probe": 0.9999997376674962
+      },
+      {
+        "name": "z[3][0]",
+        "delta_iia": 1.6089564303101156e-07,
+        "iia": 0.999999839104357,
+        "iia_null_mean": -0.7511446606089329,
+        "iia_null_std": 0.24873971937121706,
+        "dose_monotonicity": 0.6666666666666666,
+        "n": 2500,
+        "r2_probe": 0.9999997548025711
+      },
+      {
+        "name": "z[4][0]",
+        "delta_iia": 1.6214348452781024e-07,
+        "iia": 0.9999998378565155,
+        "iia_null_mean": -1.1780432480346879,
+        "iia_null_std": 0.20237492069058244,
+        "dose_monotonicity": 0.6666666666666666,
+        "n": 2500,
+        "r2_probe": 0.999999752943024
+      },
+      {
+        "name": "z[5][0]",
+        "delta_iia": 1.6143528136502994e-07,
+        "iia": 0.9999998385647186,
+        "iia_null_mean": -0.7646863749606155,
+        "iia_null_std": 0.34107846419027127,
+        "dose_monotonicity": 0.6666666666666666,
+        "n": 2500,
+        "r2_probe": 0.99999974351418
+      }
+    ]
+  },
+  "contrast_lewm_reacher": {
+    "observation[0]": 0.009,
+    "observation[1]": 0.009,
+    "observation[2]": 0.019,
+    "observation[3]": 0.014,
+    "observation[4]": 0.746,
+    "observation[5]": 0.884,
+    "qpos[0]": 0.01,
+    "qpos[1]": 0.009,
+    "qvel[0]": 0.722,
+    "qvel[1]": 0.868
+  },
+  "note": "δ=0 when WM≡symbolic claim (synthetic); δ>0 for unobservable quantities (le-wm velocity)."
+}

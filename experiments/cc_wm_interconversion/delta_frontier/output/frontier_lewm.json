@@ -1,0 +1,98 @@
+{
+  "frontier": {
+    "n_levels": 6,
+    "delta_range": [
+      0.3236,
+      0.7837
+    ],
+    "g_of_delta_fit": {
+      "form": "a·exp(−b·δ)",
+      "a": 1.4186,
+      "b": 2.1838
+    },
+    "monotonicity_spearman_g_vs_delta": -1.0,
+    "hard_bound_spearman_c_vs_delta": -1.0,
+    "min_cost_at": {
+      "delta": 0.7837,
+      "c": 0.278
+    },
+    "points": [
+      {
+        "level": "noise=0.0",
+        "delta": 0.3236,
+        "g": 0.6764,
+        "c": 10.0
+      },
+      {
+        "level": "noise=0.3",
+        "delta": 0.4068,
+        "g": 0.5932,
+        "c": 2.5
+      },
+      {
+        "level": "noise=0.7",
+        "delta": 0.4847,
+        "g": 0.5153,
+        "c": 1.25
+      },
+      {
+        "level": "noise=1.2",
+        "delta": 0.5684,
+        "g": 0.4316,
+        "c": 0.769
+      },
+      {
+        "level": "noise=2.0",
+        "delta": 0.6684,
+        "g": 0.3316,
+        "c": 0.476
+      },
+      {
+        "level": "noise=3.5",
+        "delta": 0.7837,
+        "g": 0.2163,
+        "c": 0.278
+      }
+    ],
+    "law_holds": true
+  },
+  "points": [
+    {
+      "level": "noise=0.0",
+      "delta": 0.3236,
+      "g": 0.6764,
+      "c": 10.0
+    },
+    {
+      "level": "noise=0.3",
+      "delta": 0.4068,
+      "g": 0.5932,
+      "c": 2.5
+    },
+    {
+      "level": "noise=0.7",
+      "delta": 0.4847,
+      "g": 0.5153,
+      "c": 1.25
+    },
+    {
+      "level": "noise=1.2",
+      "delta": 0.5684,
+      "g": 0.4316,
+      "c": 0.769
+    },
+    {
+      "level": "noise=2.0",
+      "delta": 0.6684,
+      "g": 0.3316,
+      "c": 0.476
+    },
+    {
+      "level": "noise=3.5",
+      "delta": 0.7837,
+      "g": 0.2163,
+      "c": 0.278
+    }
+  ],
+  "base_wm": "LeWM-reacher"
+}

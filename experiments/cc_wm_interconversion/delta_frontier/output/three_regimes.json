@@ -1,0 +1,43 @@
+{
+  "C1_exact": {
+    "composite": 0.0,
+    "max_delta": 0.0,
+    "per_claim": {
+      "z[0][0]": 0.0,
+      "z[1][0]": 0.0,
+      "z[2][0]": 0.0,
+      "z[3][0]": 0.0,
+      "z[4][0]": 0.0,
+      "z[5][0]": 0.0
+    }
+  },
+  "C2_lossy": {
+    "composite": 0.0563,
+    "mean_delta": 0.0563,
+    "per_claim": {
+      "z[0][0]": 0.0537,
+      "z[1][0]": 0.0552,
+      "z[2][0]": 0.052,
+      "z[3][0]": 0.0556,
+      "z[4][0]": 0.0589,
+      "z[5][0]": 0.0624
+    }
+  },
+  "C3_unobservable": {
+    "observable_mean_delta": 0.0134,
+    "unobservable_mean_delta": 0.8224,
+    "delta_min_lower_bound": 0.7411,
+    "per_claim": {
+      "observation[0]": 0.0147,
+      "observation[1]": 0.0089,
+      "observation[2]": 0.0237,
+      "observation[3]": 0.012,
+      "observation[4]": 0.7411,
+      "observation[5]": 0.877,
+      "qpos[0]": 0.0124,
+      "qpos[1]": 0.0086,
+      "qvel[0]": 0.7737,
+      "qvel[1]": 0.8977
+    }
+  }
+}

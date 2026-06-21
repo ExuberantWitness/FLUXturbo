@@ -1,0 +1,122 @@
+{
+  "wm": "LeWM-reacher",
+  "n_claims": 10,
+  "delta_composite": 0.3307,
+  "delta_per_claim": [
+    {
+      "name": "observation[0]",
+      "delta_iia": 0.009449466969705611,
+      "iia": 0.9905505330302944,
+      "iia_null_mean": -1.1276649533248173,
+      "iia_null_std": 0.2856352194456022,
+      "dose_monotonicity": 0.6666666666666666,
+      "n": 2500,
+      "r2_probe": 0.9882485341267486
+    },
+    {
+      "name": "observation[1]",
+      "delta_iia": 0.009961961783362394,
+      "iia": 0.9900380382166376,
+      "iia_null_mean": -1.676260082665984,
+      "iia_null_std": 0.6095048123989778,
+      "dose_monotonicity": 0.6666666666666666,
+      "n": 2500,
+      "r2_probe": 0.9868771181779022
+    },
+    {
+      "name": "observation[2]",
+      "delta_iia": 0.020687311014858878,
+      "iia": 0.9793126889851411,
+      "iia_null_mean": -1.2298986129191043,
+      "iia_null_std": 0.49883153658832546,
+      "dose_monotonicity": 0.6666666666666666,
+      "n": 2500,
+      "r2_probe": 0.9752560334421967
+    },
+    {
+      "name": "observation[3]",
+      "delta_iia": 0.012382147236551733,
+      "iia": 0.9876178527634483,
+      "iia_null_mean": -1.3975372048565864,
+      "iia_null_std": 0.4444536406469404,
+      "dose_monotonicity": 0.6666666666666666,
+      "n": 2500,
+      "r2_probe": 0.983012044660682
+    },
+    {
+      "name": "observation[4]",
+      "delta_iia": 0.7128379431062918,
+      "iia": 0.2871620568937082,
+      "iia_null_mean": -0.3981993888606993,
+      "iia_null_std": 0.2731604478702709,
+      "dose_monotonicity": 0.6666666666666666,
+      "n": 2500,
+      "r2_probe": 0.07691502758369395
+    },
+    {
+      "name": "observation[5]",
+      "delta_iia": 0.9136080369958408,
+      "iia": 0.08639196300415919,
+      "iia_null_mean": -0.3721498140396514,
+      "iia_null_std": 0.3347086425684089,
+      "dose_monotonicity": 0.6666666666666666,
+      "n": 2500,
+      "r2_probe": 0.005019339324841887
+    },
+    {
+      "name": "qpos[0]",
+      "delta_iia": 0.013305970384089538,
+      "iia": 0.9866940296159105,
+      "iia_null_mean": -0.9125897549480193,
+      "iia_null_std": 0.21144765096756032,
+      "dose_monotonicity": 0.6666666666666666,
+      "n": 2500,
+      "r2_probe": 0.9902072470954111
+    },
+    {
+      "name": "qpos[1]",
+      "delta_iia": 0.009307810974161335,
+      "iia": 0.9906921890258387,
+      "iia_null_mean": -1.0236322880895266,
+      "iia_null_std": 0.17675094592792023,
+      "dose_monotonicity": 0.6666666666666666,
+      "n": 2500,
+      "r2_probe": 0.9888144642693103
+    },
+    {
+      "name": "qvel[0]",
+      "delta_iia": 0.7069913023009421,
+      "iia": 0.2930086976990579,
+      "iia_null_mean": -0.4603726474189111,
+      "iia_null_std": 0.19711928953370264,
+      "dose_monotonicity": 0.6666666666666666,
+      "n": 2500,
+      "r2_probe": 0.20366038082922067
+    },
+    {
+      "name": "qvel[1]",
+      "delta_iia": 0.8981328509258757,
+      "iia": 0.10186714907412431,
+      "iia_null_mean": -0.25083445543457,
+      "iia_null_std": 0.15850418417361983,
+      "dose_monotonicity": 0.6666666666666666,
+      "n": 2500,
+      "r2_probe": -0.02923375187733024
+    }
+  ],
+  "consistency_spearman_delta_vs_1minusR2": 0.8667,
+  "anti_trivial": {
+    "null_iia_mean": -0.8849,
+    "n_correlational_illusions_caught": 0,
+    "illusions": [],
+    "note": "null IIA≈0 + causal-interchange ⇒ δ is non-trivial; illusions = high R² but high δ_iia."
+  },
+  "dynamics": {
+    "A_shape": [
+      192,
+      192
+    ],
+    "r2_linear": 0.9674062235430075,
+    "method": "linear_lstsq"
+  }
+}
